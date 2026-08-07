@@ -21,20 +21,23 @@ mensais (Agosto, Setembro, …). Cada aba tem duas tabelas lado a lado:
 - ENTRADAS: colunas A–E (Data, Descrição, Categoria, Conta, Valor)
 - SAÍDAS:   colunas G–K (Data, Descrição, Categoria, Conta, Valor)
 
-## Passo 1 — Instalar o Apps Script (1 vez)
+## Passo 1 — Apps Script (JÁ FEITO ✅)
 
-1. Abra a planilha:
-   https://docs.google.com/spreadsheets/d/1jp7hBdUXn5ZmgxVM8UwZFqLB7B4mT8Irmm3EYGwM9Ns
-2. Menu **Extensões → Apps Script**
-3. Apague o conteúdo e cole todo o arquivo `apps-script/Code.gs`
-4. Clique em **Implantar → Nova implantação**
-   - Tipo: **Aplicativo da web**
-   - Descrição: `controle financeiro`
-   - **Executar como:** `Eu`
-   - **Quem tem acesso:** `Qualquer pessoa`
-   - Clique em **Implantar** e autorize (a tela de permissão pode avisar que o
-     app não é verificado — escolha "Avançado → Acessar ...")
-5. Copie a **URL do aplicativo da web** (termina em `/exec`)
+O backend já está implantado via API do Google Apps Script:
+
+- **Projeto (standalone):** ControleFinanceiro
+  https://script.google.com/home/projects/1CHsIJJSQMh4a6XpnuIjvCwYlqMnStq00m5DjSfUFVcMYpASDaLkUBOwS/edit
+- **URL do web app (no config.js):**
+  https://script.google.com/macros/s/AKfycbyAVntpjaF3tfUJ0Rw__8wP7Ry6-nCRvPjQmdd6nTu1fxIsRy9E2n7kqXlB2pcetUbX/exec
+- **Config:** Executar como: Eu · Quem tem acesso: Qualquer pessoa
+- A autorização pública foi ativada em Implantar → Gerenciar implantações → ✏️ → Nova versão
+
+> ⚠️ **Depois de mudar o `apps-script/Code.gs`**, é preciso publicar uma nova
+> versão e redeploy (o /exec serve a versão fixada). Duas opções:
+>
+> 1. Pela UI (simples): editor do script → Implantar → Gerenciar implantações →
+>    ✏️ → Nova versão → Implantar
+> 2. Via API (como foi feito): ver `scripts/deploy-apps-script.sh`
 
 ## Passo 2 — Configurar o site
 
