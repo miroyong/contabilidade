@@ -23,16 +23,49 @@
 
   var $ = function (id) { return document.getElementById(id); };
 
+  // ---- cache local: renderização instantânea (evita espera do servidor) ----
+  function cacheGet(chave) {
+    try { return JSON.parse(localStorage.getItem('cf_' + chave)); } catch (e) { return null; }
+  }
+  function cacheSet(chave, valor) {
+    try { localStorage.setItem('cf_' + chave, JSON.stringify(valor)); } catch (e) {}
+  }
+  function syncStatus(ativo, msg) {
+    var el = $('sync-status');
+    if (!el) return;
+    el.hidden = !ativo;
+    el.textContent = msg || 'sincronizando…';
+  }
+  function salvarCacheMes() {
+    cacheSet('lan_' + state.mes, { existe: state.existe, entradas: state.entradas, saidas: state.saidas });
+  }
+  function renderDoCache(mes) {
+    var c = cacheGet('lan_' + mes);
+    if (!c) return false;
+    state.existe = !!c.existe;
+    state.entradas = c.entradas || [];
+    state.saidas = c.saidas || [];
+    renderTudo();
+    return true;
+  }
+  function recarregarMes() { selecionarMes(state.mes); }
+
   var fmtBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
   // ------------------------------------------------------------ utilidades
   function chamar(action, params) {
     var corpo = Object.assign({ action: action, key: APP_KEY }, params || {});
+    var ctrl = new AbortController();
+    var timer = setTimeout(function () { ctrl.abort(); }, 90000);
     return fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(corpo)
-    }).then(function (r) { return r.json(); });
+      body: JSON.stringify(corpo),
+      signal: ctrl.signal
+    }).then(function (r) {
+      clearTimeout(timer);
+      return r.json();
+    });
   }
 
   function toast(msg) {
@@ -82,6 +115,21 @@
       $('btn-novo').disabled = true;
       return;
     }
+    // 1) render imediato a partir do cache (nada de tela vazia)
+    var mesesC = cacheGet('meses');
+    if (mesesC && mesesC.meses && mesesC.meses.length) {
+      state.meses = mesesC.meses;
+      state.mesAtual = mesesC.mesAtual;
+      var opC = cacheGet('opcoes');
+      if (opC) {
+        state.categorias = opC.categorias || [];
+        state.contas = opC.contas || [];
+      }
+      preencherDatalists();
+      selecionarMes(state.meses.indexOf(state.mesAtual) >= 0 ? state.mesAtual : state.meses[0]);
+    }
+    // 2) revalida no servidor em background e atualiza
+    syncStatus(true, 'carregando…');
     Promise.all([chamar('meses'), chamar('opcoes')])
       .then(function (rs) {
         var meses = rs[0], op = rs[1];
@@ -91,6 +139,8 @@
         state.categorias = (op && op.ok && op.categorias) || [];
         state.contas = (op && op.ok && op.contas) || [];
 
+        cacheSet('meses', { meses: state.meses, mesAtual: state.mesAtual });
+        cacheSet('opcoes', { categorias: state.categorias, contas: state.contas });
         preencherDatalists();
 
         // escolhe o mês: o atual se existir, senão o primeiro existente
@@ -102,9 +152,12 @@
         selecionarMes(alvo);
       })
       .catch(function (e) {
-        $('aviso-config').hidden = false;
-        $('aviso-config').textContent = 'Erro ao conectar: ' + e.message +
-          '. Confira o APPS_SCRIPT_URL no config.js.';
+        syncStatus(false);
+        if (!renderDoCache(state.mes)) {
+          $('aviso-config').hidden = false;
+          $('aviso-config').textContent = 'Erro ao conectar: ' + e.message +
+            '. Confira o APPS_SCRIPT_URL no config.js.';
+        }
       });
   }
 
@@ -112,16 +165,21 @@
     state.mes = mes;
     state.editando = null;
     limparFiltros();
+    renderDoCache(mes); // mostra na hora se houver cache
+    syncStatus(true, 'atualizando…');
     chamar('lancamentos', { mes: mes })
       .then(function (r) {
+        syncStatus(false);
         if (!r.ok) throw new Error(r.erro);
         state.existe = !!r.existe;
         state.entradas = r.entradas || [];
         state.saidas = r.saidas || [];
+        salvarCacheMes();
         renderTudo();
       })
       .catch(function (e) {
-        toast('Erro ao carregar mês: ' + e.message);
+        syncStatus(false);
+        if (!renderDoCache(state.mes)) toast('Erro ao carregar mês: ' + e.message);
       });
   }
 
@@ -298,19 +356,55 @@
   }
 
   function salvarLancamento(dados) {
-    var prom;
-    if (state.editando) {
-      prom = chamar('atualizar', Object.assign({ mes: state.mes }, state.editando, dados));
+    var editando = state.editando;
+    var eraEdicao = !!editando;
+    var item = {
+      linha: eraEdicao ? editando.linha : -Date.now(), // provisória até o servidor responder
+      data: dados.data,
+      descricao: dados.descricao,
+      categoria: dados.categoria,
+      conta: dados.conta,
+      valor: dados.valor,
+      _tipo: dados.tipo
+    };
+
+    // ---- otimista: aplica na lista e renderiza imediatamente ----
+    if (eraEdicao) {
+      var listaE = (dados.tipo === 'entrada' ? state.entradas : state.saidas);
+      for (var i = 0; i < listaE.length; i++) {
+        if (listaE[i].linha === editando.linha) { listaE[i] = item; break; }
+      }
     } else {
-      prom = chamar('adicionar', Object.assign({ mes: state.mes }, dados));
+      (dados.tipo === 'entrada' ? state.entradas : state.saidas).push(item);
     }
+    state.editando = null;
+    salvarCacheMes();
+    fecharModal();
+    renderTudo();
+    toast(eraEdicao ? 'Atualizado!' : 'Adicionado!');
+
+    // ---- confirma no servidor em background ----
+    var prom = eraEdicao
+      ? chamar('atualizar', Object.assign({ mes: state.mes }, editando, dados))
+      : chamar('adicionar', Object.assign({ mes: state.mes }, dados));
+    syncStatus(true, 'salvando…');
     prom.then(function (r) {
-      if (!r.ok) { toast('Erro: ' + r.erro); return; }
-      toast(state.editando ? 'Lançamento atualizado!' : 'Lançamento adicionado!');
-      state.editando = null;
-      fecharModal();
-      selecionarMes(state.mes); // recarrega (atualiza totais/gráfico)
-    }).catch(function (e) { toast('Erro: ' + e.message); });
+      syncStatus(false);
+      if (!r.ok) { toast('Erro ao salvar: ' + r.erro); recarregarMes(); return; }
+      // ajusta a linha real do item recém-criado
+      if (!eraEdicao && r.linha) {
+        var listaN = (dados.tipo === 'entrada' ? state.entradas : state.saidas);
+        for (var j = 0; j < listaN.length; j++) {
+          if (listaN[j].linha === item.linha) { listaN[j].linha = r.linha; break; }
+        }
+        salvarCacheMes();
+        renderTudo();
+      }
+    }).catch(function (e) {
+      syncStatus(false);
+      toast('Erro ao salvar: ' + e.message);
+      recarregarMes();
+    });
   }
 
   function excluir(tipo, linha) {
@@ -318,11 +412,23 @@
       .filter(function (l) { return l.linha === linha; })[0];
     var desc = item ? item.descricao : 'este lançamento';
     if (!confirm('Excluir "' + desc + '"?')) return;
+    // ---- otimista ----
+    state[tipo === 'entrada' ? 'entradas' : 'saidas'] =
+      (tipo === 'entrada' ? state.entradas : state.saidas)
+        .filter(function (l) { return l.linha !== linha; });
+    salvarCacheMes();
+    renderTudo();
+    toast('Excluído!');
+    // ---- confirma no servidor ----
+    syncStatus(true, 'excluindo…');
     chamar('excluir', { mes: state.mes, tipo: tipo, linha: linha }).then(function (r) {
-      if (!r.ok) { toast('Erro: ' + r.erro); return; }
-      toast('Excluído!');
-      selecionarMes(state.mes);
-    }).catch(function (e) { toast('Erro: ' + e.message); });
+      syncStatus(false);
+      if (!r.ok) { toast('Erro: ' + r.erro); recarregarMes(); }
+    }).catch(function (e) {
+      syncStatus(false);
+      toast('Erro: ' + e.message);
+      recarregarMes();
+    });
   }
 
   // ------------------------------------------------------------ modal

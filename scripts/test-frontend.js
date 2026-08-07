@@ -38,6 +38,12 @@ global.document = {
   querySelector: (sel) => makeEl(sel),
 };
 global.window = { APP_CONFIG: { APPS_SCRIPT_URL: 'https://mock/exec', APP_KEY: 'cf-2026-k3x9pQ7mZt' } };
+const memStore = {};
+global.localStorage = {
+  getItem: (k) => (k in memStore ? memStore[k] : null),
+  setItem: (k, v) => { memStore[k] = String(v); },
+  removeItem: (k) => { delete memStore[k]; }
+};
 global.requestAnimationFrame = (fn) => fn();
 global.confirm = () => true;
 global.prompt = () => 'Setembro';
