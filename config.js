@@ -6,7 +6,7 @@
 //   Implantar → Gerenciar implantações → Aplicativo da web → URL
 // ============================================================
 window.APP_CONFIG = {
-  APPS_SCRIPT_URL: "",
+  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbyAVntpjaF3tfUJ0Rw__8wP7Ry6-nCRvPjQmdd6nTu1fxIsRy9E2n7kqXlB2pcetUbX/exec",
 
   // Mesma chave do APP_KEY no apps-script/Code.gs.
   // Se trocar aqui, troque lá também.
