@@ -56,15 +56,23 @@ contra uso indevido da URL pública — pode trocar nos dois lugares).
 
 ## Passo 3 — Publicar no GitHub Pages
 
+O site **já está publicado** em: https://miroyong.github.io/contabilidade/
+
+Depois de preencher o `config.js` (Passo 2), envie a atualização:
+
 ```bash
 cd ~/contabilidade
-git init && git add -A && git commit -m "Controle financeiro"
-gh repo create contabilidade --public --source . --push
-gh api -X POST repos/miroyong/contabilidade/pages \
-  -f 'source[branch]=main' -f 'source[path]=/'
+git add config.js && git commit -m "Configura URL do Apps Script" && git push
 ```
 
-O site fica em: https://miroyong.github.io/contabilidade/
+O GitHub Pages atualiza automaticamente (leva ~1 min).
+
+> Se quiser recriar o repo do zero (não recomendado — já existe):
+> ```bash
+> gh repo create contabilidade --public --source . --push
+> gh api -X POST repos/miroyong/contabilidade/pages \
+>   -f 'source[branch]=main' -f 'source[path]=/'
+> ```
 
 ## Uso
 
