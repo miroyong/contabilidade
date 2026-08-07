@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle Financeiro</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topo">
+  <h1>💰 Controle Financeiro</h1>
+</header>
+
+<main>
+  <div id="aviso-config" class="aviso aviso-erro" hidden>
+    ⚠️ APPS_SCRIPT_URL ainda não configurado no <code>config.js</code>.
+    Veja o README.md (Passo 1) para configurar.
+  </div>
+
+  <!-- Cartão de saldo -->
+  <section class="cartao saldo" id="saldo-card">
+    <div class="saldo-rotulo">Balanço · <span id="saldo-mes">—</span></div>
+    <div class="saldo-valor" id="saldo-valor">R$ 0,00</div>
+    <div class="saldo-sub">
+      <span class="tag tag-entrada">▲ <span id="saldo-entradas">R$ 0,00</span></span>
+      <span class="tag tag-saida">▼ <span id="saldo-saidas">R$ 0,00</span></span>
+    </div>
+  </section>
+
+  <!-- Seletor de mês -->
+  <section class="meses">
+    <div class="meses-list" id="meses-list"></div>
+    <button class="btn-mes-novo" id="btn-novo-mes" title="Criar aba de mês">＋</button>
+  </section>
+  <div id="aviso-mes" class="aviso" hidden></div>
+
+  <!-- Ações e filtros -->
+  <section class="acoes">
+    <button class="btn-primario" id="btn-novo">＋ Novo lançamento</button>
+    <div class="filtros">
+      <select id="filtro-tipo">
+        <option value="todos">Entradas e saídas</option>
+        <option value="entrada">Só entradas</option>
+        <option value="saida">Só saídas</option>
+      </select>
+      <select id="filtro-categoria"><option value="">Todas as categorias</option></select>
+      <select id="filtro-conta"><option value="">Todas as contas</option></select>
+      <input id="filtro-busca" type="search" placeholder="Buscar descrição…">
+    </div>
+  </section>
+
+  <!-- Gráfico por categoria -->
+  <section class="cartao grafico" id="grafico-section">
+    <h2>Saídas por categoria</h2>
+    <div id="grafico"></div>
+  </section>
+
+  <!-- Extrato -->
+  <section class="cartao extrato">
+    <h2>Lançamentos <span class="contador" id="contador">0</span></h2>
+    <div id="lista"></div>
+  </section>
+</main>
+
+<!-- Modal de lançamento -->
+<dialog id="modal">
+  <form id="form-lancamento" novalidate>
+    <h3 id="modal-titulo">Novo lançamento</h3>
+
+    <div class="tipo-toggle">
+      <button type="button" class="tipo-btn ativo" data-tipo="entrada">Entrada</button>
+      <button type="button" class="tipo-btn" data-tipo="saida">Saída</button>
+    </div>
+
+    <label>Data
+      <input type="date" id="f-data" required>
+    </label>
+    <label>Descrição
+      <input type="text" id="f-descricao" placeholder="Ex.: Supermercado" required>
+    </label>
+    <label>Categoria
+      <input type="text" id="f-categoria" list="dl-categorias" placeholder="Ex.: Alimentação">
+    </label>
+    <label>Conta
+      <input type="text" id="f-conta" list="dl-contas" placeholder="Ex.: Cartão de Crédito">
+    </label>
+    <label>Valor (R$)
+      <input type="text" id="f-valor" inputmode="decimal" placeholder="0,00" required>
+    </label>
+
+    <datalist id="dl-categorias"></datalist>
+    <datalist id="dl-contas"></datalist>
+
+    <div class="modal-acoes">
+      <button type="button" class="btn-secundario" id="btn-cancelar">Cancelar</button>
+      <button type="submit" class="btn-primario" id="btn-salvar">Salvar</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
