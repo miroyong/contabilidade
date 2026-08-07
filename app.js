@@ -35,6 +35,12 @@
     if (!el) return;
     el.hidden = !ativo;
     el.textContent = ativo ? (msg || 'sincronizando…') : '';
+    // segurança: nunca deixa o indicador ativo por mais de 60s
+    clearTimeout(syncStatus._t);
+    if (ativo) syncStatus._t = setTimeout(function () {
+      el.hidden = true;
+      el.textContent = '';
+    }, 60000);
   }
   function salvarCacheMes() {
     cacheSet('lan_' + state.mes, { existe: state.existe, entradas: state.entradas, saidas: state.saidas });
