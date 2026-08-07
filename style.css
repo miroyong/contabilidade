@@ -45,13 +45,13 @@ body {
 }
 .topo h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: .3px; }
 .sync-status {
-  display: block;
   font-size: .72rem;
   font-weight: 400;
   opacity: .9;
   margin-top: 2px;
   animation: pulse 1.2s ease-in-out infinite;
 }
+.sync-status[hidden] { display: none; }
 @keyframes pulse { 50% { opacity: .3; } }
 
 main {

@@ -34,7 +34,7 @@
     var el = $('sync-status');
     if (!el) return;
     el.hidden = !ativo;
-    el.textContent = msg || 'sincronizando…';
+    el.textContent = ativo ? (msg || 'sincronizando…') : '';
   }
   function salvarCacheMes() {
     cacheSet('lan_' + state.mes, { existe: state.existe, entradas: state.entradas, saidas: state.saidas });
