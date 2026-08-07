@@ -36,8 +36,10 @@ global.document = {
   getElementById: byId,
   querySelectorAll: () => [],
   querySelector: (sel) => makeEl(sel),
+  documentElement: { dataset: {} },
 };
 global.window = { APP_CONFIG: { APPS_SCRIPT_URL: 'https://mock/exec', APP_KEY: 'cf-2026-k3x9pQ7mZt' } };
+global.window.matchMedia = () => ({ matches: false });
 const memStore = {};
 global.localStorage = {
   getItem: (k) => (k in memStore ? memStore[k] : null),
@@ -103,6 +105,16 @@ setTimeout(() => {
   assert.ok(listaHtml.includes('data-edit') && listaHtml.includes('data-del'), 'ações editar/excluir');
   assert.strictEqual(els['contador'].textContent, '4', 'contador de lançamentos');
 
-  console.log('✔ SMOKE TEST DO FRONT-END PASSOU (carregou, renderizou saldo/meses/gráfico/lista)');
+  // dashboard: pizza + insights renderizados
+  const pizzaHtml = els['pizza-grafico'].innerHTML;
+  assert.ok(pizzaHtml.includes('pizza-centro') && pizzaHtml.includes('%'), 'pizza renderizada');
+  const insightsHtml = els['insights'].innerHTML;
+  assert.ok(insightsHtml.includes('insight'), 'insights renderizados');
+  assert.ok(insightsHtml.includes('Comprometimento'), 'insight de comprometimento');
+
+  // tema: claro por padrão no mock
+  assert.strictEqual(global.document.documentElement.dataset.tema, 'claro', 'tema claro default');
+
+  console.log('✔ SMOKE TEST DO FRONT-END PASSOU (inclui dashboard e tema)');
   process.exit(0);
 }, 300);

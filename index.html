@@ -12,6 +12,7 @@
 <header class="topo">
   <h1>💰 Controle Financeiro</h1>
   <span id="sync-status" class="sync-status" hidden></span>
+  <button id="btn-tema" class="btn-tema" type="button" title="Alternar tema">🌙</button>
 </header>
 
 <main>
@@ -28,6 +29,19 @@
       <span class="tag tag-entrada">▲ <span id="saldo-entradas">R$ 0,00</span></span>
       <span class="tag tag-saida">▼ <span id="saldo-saidas">R$ 0,00</span></span>
     </div>
+  </section>
+
+  <!-- Dashboard -->
+  <section class="cartao" id="dashboard-section">
+    <h2>📊 Dashboard</h2>
+    <div class="dash-grid">
+      <div class="dash-pizza">
+        <div class="pizza" id="pizza-grafico"></div>
+        <div class="pizza-rotulos" id="pizza-rotulos"></div>
+      </div>
+      <div class="dash-insights" id="insights"></div>
+    </div>
+    <div class="comparativo" id="comparativo"></div>
   </section>
 
   <!-- Seletor de mês -->
@@ -93,6 +107,13 @@
 
     <datalist id="dl-categorias"></datalist>
     <datalist id="dl-contas"></datalist>
+
+    <label class="recorrente-linha">
+      <input type="checkbox" id="f-recorrente"> Lançamento recorrente
+    </label>
+    <label id="f-recorrente-wrap" hidden>Repetir por quantos meses?
+      <input type="number" id="f-recorrente-meses" min="1" max="24" value="12">
+    </label>
 
     <div class="modal-acoes">
       <button type="button" class="btn-secundario" id="btn-cancelar">Cancelar</button>

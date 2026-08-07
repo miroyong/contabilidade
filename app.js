@@ -108,6 +108,14 @@
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
+  // ------------------------------------------------------------ tema
+  function aplicarTema(t) {
+    document.documentElement.dataset.tema = t;
+    var btn = $('btn-tema');
+    if (btn) btn.textContent = t === 'escuro' ? '☀️' : '🌙';
+    cacheSet('tema', t);
+  }
+
   // ------------------------------------------------------------ carregamento
   function carregarInicio() {
     if (!SCRIPT_URL) {
@@ -176,6 +184,7 @@
         state.saidas = r.saidas || [];
         salvarCacheMes();
         renderTudo();
+        carregarComparativo(mes);
       })
       .catch(function (e) {
         syncStatus(false);
@@ -198,6 +207,7 @@
     renderMeses();
     renderAvisoMes();
     renderFiltros();
+    renderDashboard();
     renderGrafico();
     renderLista();
   }
@@ -336,6 +346,112 @@
     });
   }
 
+  // ------------------------------------------------------------ dashboard
+  function renderDashboard() {
+    var totE = state.entradas.reduce(function (s, l) { return s + l.valor; }, 0);
+    var totS = state.saidas.reduce(function (s, l) { return s + l.valor; }, 0);
+    renderPizza(totE, totS);
+    renderInsights(totE, totS);
+    renderComparativo();
+  }
+
+  function renderPizza(totE, totS) {
+    var pizza = $('pizza-grafico');
+    var rot = $('pizza-rotulos');
+    var total = totE + totS;
+    if (total <= 0) {
+      pizza.style.background = '#e5e7eb';
+      pizza.innerHTML = '<div class="pizza-centro">sem<br>movimento</div>';
+      rot.innerHTML = '';
+      return;
+    }
+    var pctE = Math.round(totE / total * 100);
+    var pctS = 100 - pctE;
+    var escuro = document.documentElement.dataset.tema === 'escuro';
+    var corE = escuro ? '#4ade80' : '#16a34a';
+    var corS = escuro ? '#f87171' : '#dc2626';
+    pizza.style.background = 'conic-gradient(' + corE + ' 0 ' + pctE + '%, ' + corS + ' ' + pctE + '% 100%)';
+    pizza.innerHTML = '<div class="pizza-centro">' + pctE + '%<br>entradas</div>';
+    rot.innerHTML = '<div><b class="verde">▲ ' + fmtBRL.format(totE) + '</b> (' + pctE + '%)</div>' +
+      '<div><b class="vermelho">▼ ' + fmtBRL.format(totS) + '</b> (' + pctS + '%)</div>';
+  }
+
+  function renderInsights(totE, totS) {
+    var box = $('insights');
+    var html = [];
+    var porCat = {};
+    state.saidas.forEach(function (l) {
+      var c = l.categoria || 'Sem categoria';
+      porCat[c] = (porCat[c] || 0) + l.valor;
+    });
+    var topCat = null;
+    Object.keys(porCat).forEach(function (c) {
+      if (!topCat || porCat[c] > topCat.valor) topCat = { nome: c, valor: porCat[c] };
+    });
+    var maior = state.saidas.slice().sort(function (a, b) { return b.valor - a.valor; })[0];
+
+    if (topCat && topCat.valor > 0) {
+      html.push('<div class="insight">🎯 Categoria top: <b>' + esc(topCat.nome) + '</b> — ' +
+        fmtBRL.format(topCat.valor) + ' (' + Math.round(topCat.valor / totS * 100) + '% das saídas)</div>');
+    }
+    if (maior && maior.valor > 0) {
+      html.push('<div class="insight">💸 Maior saída: <b>' + esc(maior.descricao) + '</b> — ' + fmtBRL.format(maior.valor) + '</div>');
+    }
+    if (totE > 0) {
+      var comp = Math.round(totS / totE * 100);
+      html.push('<div class="insight">📉 Comprometimento: <b class="' + (comp >= 100 ? 'neg' : 'pos') + '">' +
+        comp + '%</b> da renda em saídas' + (comp >= 100 ? ' ⚠️' : '') + '</div>');
+    }
+    if (totS > 0) {
+      var dias = new Date().getDate();
+      html.push('<div class="insight">📅 Média diária: <b>' + fmtBRL.format(totS / dias) + '</b> de gasto</div>');
+    }
+    if (totE - totS < 0) {
+      html.push('<div class="insight">🚨 <b class="neg">Balanço negativo</b> de ' +
+        fmtBRL.format(Math.abs(totE - totS)) + '</div>');
+    }
+    if (!html.length) html.push('<div class="insight">Sem dados suficientes para insights ainda.</div>');
+    box.innerHTML = html.join('');
+  }
+
+  var compState = { mes: null, dados: null };
+  function carregarComparativo(mes) {
+    var idx = state.meses.indexOf(mes);
+    if (idx <= 0) { compState = { mes: mes, dados: null }; renderComparativo(); return; }
+    var ant = state.meses[idx - 1];
+    var c = cacheGet('lan_' + ant);
+    if (c) { compState = { mes: mes, dados: c }; renderComparativo(); }
+    chamar('lancamentos', { mes: ant }).then(function (r) {
+      if (!r.ok) return;
+      var dados = { existe: !!r.existe, entradas: r.entradas || [], saidas: r.saidas || [] };
+      cacheSet('lan_' + ant, dados);
+      if (state.mes === mes) { compState = { mes: mes, dados: dados }; renderComparativo(); }
+    }).catch(function () {});
+  }
+
+  function renderComparativo() {
+    var box = $('comparativo');
+    if (!compState.dados || compState.mes !== state.mes) { box.innerHTML = ''; return; }
+    var aT = compState.dados.entradas.reduce(function (s, l) { return s + l.valor; }, 0);
+    var aS = compState.dados.saidas.reduce(function (s, l) { return s + l.valor; }, 0);
+    var tE = state.entradas.reduce(function (s, l) { return s + l.valor; }, 0);
+    var tS = state.saidas.reduce(function (s, l) { return s + l.valor; }, 0);
+    var idx = state.meses.indexOf(state.mes);
+    var nomeAnt = idx > 0 ? state.meses[idx - 1] : '';
+    function delta(atual, ant) {
+      if (!ant) return null;
+      if (ant === 0) return atual > 0 ? 'novo' : null;
+      return Math.round((atual - ant) / ant * 100);
+    }
+    var partes = [];
+    var dE = delta(tE, aT);
+    if (dE !== null) partes.push('Entradas ' + (dE === 'novo' ? 'novas' : (dE >= 0 ? '+' + dE : dE) + '%'));
+    var dS = delta(tS, aS);
+    if (dS !== null) partes.push('Saídas ' + (dS === 'novo' ? 'novas' : (dS >= 0 ? '+' + dS : dS) + '%'));
+    if (!partes.length) { box.innerHTML = ''; return; }
+    box.innerHTML = '📈 vs ' + esc(nomeAnt) + ': ' + partes.join(' · ');
+  }
+
   function limparFiltros() {
     state.filtro = { tipo: 'todos', categoria: '', conta: '', busca: '' };
     $('filtro-tipo').value = 'todos';
@@ -381,7 +497,7 @@
     salvarCacheMes();
     fecharModal();
     renderTudo();
-    toast(eraEdicao ? 'Atualizado!' : 'Adicionado!');
+    toast(eraEdicao ? 'Atualizado!' : (dados.recorrente ? 'Adicionado! Criando próximos meses…' : 'Adicionado!'));
 
     // ---- confirma no servidor em background ----
     var prom = eraEdicao
@@ -400,6 +516,7 @@
         salvarCacheMes();
         renderTudo();
       }
+      if (dados.recorrente && !eraEdicao) criarRecorrentes(dados, dados.recorrenteMeses);
     }).catch(function (e) {
       syncStatus(false);
       toast('Erro ao salvar: ' + e.message);
@@ -431,6 +548,56 @@
     });
   }
 
+  // ------------------------------------------------------------ lançamento recorrente
+  function proximosMeses(qtd, diaRef) {
+    var hoje = new Date();
+    var dia = Math.max(1, Math.min(parseInt(diaRef, 10) || hoje.getDate(), 28));
+    var out = [];
+    for (var i = 1; i <= qtd; i++) {
+      var d = new Date(hoje.getFullYear(), hoje.getMonth() + i, 1);
+      var ult = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+      var dc = Math.min(dia, ult);
+      var data = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + dc).slice(-2);
+      var nome = d.toLocaleDateString('pt-BR', { month: 'long' });
+      nome = nome.charAt(0).toUpperCase() + nome.slice(1);
+      out.push({ mes: nome, data: data });
+    }
+    return out;
+  }
+
+  function criarRecorrentes(dados, qtd) {
+    var meses = proximosMeses(qtd, dados.data ? dados.data.slice(8, 10) : null);
+    var i = 0;
+    var sucesso = 0;
+    (function proximo() {
+      if (i >= meses.length) {
+        syncStatus(false);
+        toast(sucesso > 0 ? 'Recorrente criado em ' + sucesso + ' mês(es)!' : 'Nada criado.');
+        return;
+      }
+      var m = meses[i++];
+      syncStatus(true, 'criando ' + m.mes + '…');
+      chamar('novoMes', { mes: m.mes })
+        .then(function (r) {
+          if (!r.ok) throw new Error(m.mes + ': ' + r.erro);
+          return chamar('adicionar', {
+            mes: m.mes, tipo: dados.tipo, data: m.data,
+            descricao: dados.descricao, categoria: dados.categoria,
+            conta: dados.conta, valor: dados.valor
+          });
+        })
+        .then(function (r) {
+          if (!r.ok) throw new Error(m.mes + ': ' + r.erro);
+          sucesso++;
+          proximo();
+        })
+        .catch(function (e) {
+          syncStatus(false);
+          toast('Erro ao criar ' + m.mes + ': ' + e.message);
+        });
+    })();
+  }
+
   // ------------------------------------------------------------ modal
   function abrirModal(modo, tipo, linha) {
     state.editando = null;
@@ -439,6 +606,9 @@
     $('f-categoria').value = '';
     $('f-conta').value = '';
     $('f-valor').value = '';
+    $('f-recorrente').checked = false;
+    $('f-recorrente-wrap').hidden = true;
+    $('f-recorrente-meses').value = 12;
 
     setTipo(tipo || 'entrada');
     $('modal-titulo').textContent = 'Novo lançamento';
@@ -514,7 +684,9 @@
       descricao: $('f-descricao').value.trim(),
       categoria: $('f-categoria').value.trim(),
       conta: $('f-conta').value.trim(),
-      valor: valor
+      valor: valor,
+      recorrente: $('f-recorrente').checked,
+      recorrenteMeses: parseInt($('f-recorrente-meses').value, 10) || 12
     };
     if (!dados.data) { toast('Informe a data.'); return; }
     if (!dados.descricao) { toast('Informe a descrição.'); return; }
@@ -536,6 +708,17 @@
     renderLista();
   });
 
+  $('btn-tema').addEventListener('click', function () {
+    aplicarTema(document.documentElement.dataset.tema === 'escuro' ? 'claro' : 'escuro');
+  });
+
+  $('f-recorrente').addEventListener('change', function () {
+    $('f-recorrente-wrap').hidden = !this.checked;
+  });
+
   // ------------------------------------------------------------ start
+  var temaInit = cacheGet('tema') ||
+    (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro');
+  aplicarTema(temaInit);
   carregarInicio();
 })();

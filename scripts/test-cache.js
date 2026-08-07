@@ -33,8 +33,12 @@ function setup(fetchFn) {
     'filtro-busca','grafico','contador','lista','modal','modal-titulo','f-data',
     'f-descricao','f-categoria','f-conta','f-valor','dl-categorias','dl-contas',
     'btn-cancelar','btn-novo-mes','toast','form-lancamento','btn-salvar','sync-status'];
-  global.document = { getElementById: byId, querySelectorAll: () => [], querySelector: (sel) => makeEl(sel) };
+  global.document = {
+    getElementById: byId, querySelectorAll: () => [], querySelector: (sel) => makeEl(sel),
+    documentElement: { dataset: {} }
+  };
   global.window = { APP_CONFIG: { APPS_SCRIPT_URL: 'https://mock/exec', APP_KEY: 'k' } };
+  global.window.matchMedia = () => ({ matches: false });
   global.requestAnimationFrame = (fn) => fn();
   global.confirm = () => true;
   global.prompt = () => 'Setembro';
