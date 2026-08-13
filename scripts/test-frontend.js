@@ -27,7 +27,7 @@ function makeEl(id) {
 const els = {};
 const byId = (id) => (els[id] || (els[id] = makeEl(id)));
 const ids = ['aviso-config', 'saldo-mes', 'saldo-valor', 'saldo-entradas', 'saldo-saidas',
-  'saldo-pix', 'saldo-fisico', 'saldo-total', 'btn-planilha', 'btn-tema',
+  'saldo-pix', 'saldo-fisico', 'btn-planilha', 'btn-tema',
   'meses-list', 'aviso-mes', 'btn-novo', 'filtro-tipo', 'filtro-categoria', 'filtro-conta',
   'filtro-busca', 'grafico', 'contador', 'lista', 'modal', 'modal-titulo', 'f-data',
   'f-descricao', 'f-categoria', 'f-conta', 'f-valor', 'dl-categorias', 'dl-contas',
@@ -94,10 +94,9 @@ setTimeout(() => {
   assert.strictEqual(norm(els['saldo-entradas'].textContent), 'R$ 2.800,00', 'total entradas');
   assert.strictEqual(norm(els['saldo-saidas'].textContent), 'R$ 1.700,00', 'total saídas');
 
-  // novo: balanço por conta (Pix / Físico / Total)
+  // novo: balanço por conta (Pix / Físico); Total só no saldo-valor em cima
   assert.strictEqual(norm(els['saldo-pix'].textContent), 'R$ 2.000,00', 'balanço Pix (2500-500)');
   assert.strictEqual(norm(els['saldo-fisico'].textContent), '-R$ 900,00', 'balanço Físico (300-1200)');
-  assert.strictEqual(norm(els['saldo-total'].textContent), 'R$ 1.100,00', 'balanço Total');
   assert.ok(els['saldo-fisico'].className.includes('negativo'), 'Físico negativo');
   assert.ok(els['saldo-pix'].className.includes('positivo'), 'Pix positivo');
 

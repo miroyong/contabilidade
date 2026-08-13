@@ -265,10 +265,8 @@
     $('saldo-fisico').textContent = fmtBRL.format(porConta['Físico']);
     $('saldo-pix').className = 'saldo-item-valor ' + (porConta['Pix'] >= 0 ? 'positivo' : 'negativo');
     $('saldo-fisico').className = 'saldo-item-valor ' + (porConta['Físico'] >= 0 ? 'positivo' : 'negativo');
-    $('saldo-total').textContent = fmtBRL.format(bal);
-    $('saldo-total').className = 'saldo-item-valor ' + (bal >= 0 ? 'positivo' : 'negativo');
 
-    // lançamentos sem conta ("outros") ficam refletidos apenas no Total
+    // lançamentos sem conta ("outros") ficam refletidos apenas no Total em cima
     void outros;
   }
 
