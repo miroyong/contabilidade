@@ -198,11 +198,20 @@
       });
   }
 
+  // contas disponíveis: apenas Pix e Físico (sempre presentes)
+  function contasOpcoes() {
+    var fixas = CONTAS.slice();
+    state.contas.forEach(function (c) {
+      if (fixas.indexOf(c) < 0 && contaChave(c)) fixas.push(c); // legado ganha a versão canônica
+    });
+    return fixas;
+  }
+
   function preencherDatalists() {
     $('dl-categorias').innerHTML = state.categorias.map(function (c) {
       return '<option value="' + esc(c) + '">';
     }).join('');
-    $('dl-contas').innerHTML = state.contas.map(function (c) {
+    $('dl-contas').innerHTML = contasOpcoes().map(function (c) {
       return '<option value="' + esc(c) + '">';
     }).join('');
   }
@@ -218,10 +227,32 @@
     renderLista();
   }
 
+  var CONTAS = ['Pix', 'Físico'];
+
+  // normaliza qualquer nome de conta legado para "Pix" ou "Físico"
+  function contaChave(nome) {
+    var s = String(nome || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (s.indexOf('pix') >= 0) return 'Pix';
+    if (s.indexOf('fisic') >= 0) return 'Físico';
+    return null; // não entra no breakdown
+  }
+
   function renderSaldo() {
     var totE = state.entradas.reduce(function (s, l) { return s + l.valor; }, 0);
     var totS = state.saidas.reduce(function (s, l) { return s + l.valor; }, 0);
     var bal = totE - totS;
+
+    // balanço por conta: soma entradas e saídas de cada conta
+    var porConta = { 'Pix': 0, 'Físico': 0 };
+    function acumula(lista, sinal) {
+      lista.forEach(function (l) {
+        var k = contaChave(l.conta);
+        if (k && porConta.hasOwnProperty(k)) porConta[k] += sinal * l.valor;
+      });
+    }
+    acumula(state.entradas, 1);
+    acumula(state.saidas, -1);
+    var outros = bal - (porConta['Pix'] + porConta['Físico']);
 
     $('saldo-mes').textContent = state.mes || '—';
     var v = $('saldo-valor');
@@ -229,6 +260,16 @@
     v.className = 'saldo-valor ' + (bal >= 0 ? 'positivo' : 'negativo');
     $('saldo-entradas').textContent = fmtBRL.format(totE);
     $('saldo-saidas').textContent = fmtBRL.format(totS);
+
+    $('saldo-pix').textContent = fmtBRL.format(porConta['Pix']);
+    $('saldo-fisico').textContent = fmtBRL.format(porConta['Físico']);
+    $('saldo-pix').className = 'saldo-item-valor ' + (porConta['Pix'] >= 0 ? 'positivo' : 'negativo');
+    $('saldo-fisico').className = 'saldo-item-valor ' + (porConta['Físico'] >= 0 ? 'positivo' : 'negativo');
+    $('saldo-total').textContent = fmtBRL.format(bal);
+    $('saldo-total').className = 'saldo-item-valor ' + (bal >= 0 ? 'positivo' : 'negativo');
+
+    // lançamentos sem conta ("outros") ficam refletidos apenas no Total
+    void outros;
   }
 
   function renderMeses() {
@@ -269,7 +310,7 @@
     selCat.innerHTML = '<option value="">Todas as categorias</option>' +
       state.categorias.map(function (c) { return '<option value="' + esc(c) + '">' + esc(c) + '</option>'; }).join('');
     selConta.innerHTML = '<option value="">Todas as contas</option>' +
-      state.contas.map(function (c) { return '<option value="' + esc(c) + '">' + esc(c) + '</option>'; }).join('');
+      contasOpcoes().map(function (c) { return '<option value="' + esc(c) + '">' + esc(c) + '</option>'; }).join('');
     if (atualCat) selCat.value = atualCat;
     if (atualConta) selConta.value = atualConta;
   }

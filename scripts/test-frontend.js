@@ -27,6 +27,7 @@ function makeEl(id) {
 const els = {};
 const byId = (id) => (els[id] || (els[id] = makeEl(id)));
 const ids = ['aviso-config', 'saldo-mes', 'saldo-valor', 'saldo-entradas', 'saldo-saidas',
+  'saldo-pix', 'saldo-fisico', 'saldo-total', 'btn-planilha', 'btn-tema',
   'meses-list', 'aviso-mes', 'btn-novo', 'filtro-tipo', 'filtro-categoria', 'filtro-conta',
   'filtro-busca', 'grafico', 'contador', 'lista', 'modal', 'modal-titulo', 'f-data',
   'f-descricao', 'f-categoria', 'f-conta', 'f-valor', 'dl-categorias', 'dl-contas',
@@ -55,17 +56,17 @@ global.Intl = Intl;
 const LANCAMENTOS = {
   ok: true, existe: true, mes: 'Agosto',
   entradas: [
-    { linha: 7, data: '2026-08-01', descricao: 'Salário', categoria: 'Salário', conta: 'Banco do Brasil', valor: 2500 },
-    { linha: 9, data: '2026-08-15', descricao: 'Freela', categoria: 'Serviços', conta: 'Nubank', valor: 300 }
+    { linha: 7, data: '2026-08-01', descricao: 'Salário', categoria: 'Salário', conta: 'Pix', valor: 2500 },
+    { linha: 9, data: '2026-08-15', descricao: 'Freela', categoria: 'Serviços', conta: 'Físico', valor: 300 }
   ],
   saidas: [
-    { linha: 7, data: '2026-08-02', descricao: 'Supermercado', categoria: 'Alimentação', conta: 'Cartão de Crédito', valor: 500 },
-    { linha: 8, data: '2026-08-10', descricao: 'Aluguel', categoria: 'Moradia', conta: 'Banco do Brasil', valor: 1200 }
+    { linha: 7, data: '2026-08-02', descricao: 'Supermercado', categoria: 'Alimentação', conta: 'Pix', valor: 500 },
+    { linha: 8, data: '2026-08-10', descricao: 'Aluguel', categoria: 'Moradia', conta: 'Físico', valor: 1200 }
   ],
   totais: { entradas: 2800, saidas: 1700, balanco: 1100 }
 };
 const MESES = { ok: true, meses: ['Agosto', 'Setembro'], mesAtual: 'Agosto' };
-const OPCOES = { ok: true, categorias: ['Salário', 'Serviços', 'Alimentação', 'Moradia'], contas: ['Banco do Brasil', 'Nubank', 'Cartão de Crédito'] };
+const OPCOES = { ok: true, categorias: ['Salário', 'Serviços', 'Alimentação', 'Moradia'], contas: ['Pix', 'Físico'] };
 
 global.fetch = (url, opts) => {
   const corpo = JSON.parse(opts.body);
@@ -92,6 +93,21 @@ setTimeout(() => {
   assert.ok(els['saldo-valor'].className.includes('positivo'), 'classe positivo');
   assert.strictEqual(norm(els['saldo-entradas'].textContent), 'R$ 2.800,00', 'total entradas');
   assert.strictEqual(norm(els['saldo-saidas'].textContent), 'R$ 1.700,00', 'total saídas');
+
+  // novo: balanço por conta (Pix / Físico / Total)
+  assert.strictEqual(norm(els['saldo-pix'].textContent), 'R$ 2.000,00', 'balanço Pix (2500-500)');
+  assert.strictEqual(norm(els['saldo-fisico'].textContent), '-R$ 900,00', 'balanço Físico (300-1200)');
+  assert.strictEqual(norm(els['saldo-total'].textContent), 'R$ 1.100,00', 'balanço Total');
+  assert.ok(els['saldo-fisico'].className.includes('negativo'), 'Físico negativo');
+  assert.ok(els['saldo-pix'].className.includes('positivo'), 'Pix positivo');
+
+  // menu/menu Conta: opções restritas a Pix/Físico (datalist e filtro)
+  assert.ok(els['dl-contas'].innerHTML.includes('value="Pix"'), 'datalist Conta inclui Pix');
+  assert.ok(els['dl-contas'].innerHTML.includes('value="Físico"'), 'datalist Conta inclui Físico');
+  assert.ok(!els['dl-contas'].innerHTML.includes('Banco do Brasil'), 'datalist sem contas legado');
+  assert.ok(els['filtro-conta'].innerHTML.includes('"Pix"') && els['filtro-conta'].innerHTML.includes('"Físico"'),
+    'filtro Conta com Pix/Físico');
+  assert.ok(!els['filtro-conta'].innerHTML.includes('Cartão de Crédito'), 'filtro sem contas legado');
 
   const mesesHtml = els['meses-list'].innerHTML;
   assert.ok(mesesHtml.includes('Agosto') && mesesHtml.includes('Setembro'), 'chips de mês');

@@ -33,15 +33,23 @@ body {
   text-align: center;
   position: relative;
 }
-.btn-tema {
+.topo-acoes {
   position: absolute;
   top: 12px; right: 12px;
+  display: flex;
+  gap: 8px;
+}
+.btn-planilha, .btn-tema {
   background: rgba(255,255,255,.18);
   border: none; border-radius: 999px;
   width: 38px; height: 38px;
   font-size: 1.05rem;
   cursor: pointer;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
 }
 .topo h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: .3px; }
 .sync-status {
@@ -92,6 +100,26 @@ main {
 .saldo-valor.positivo { color: var(--verde); }
 .saldo-valor.negativo { color: var(--vermelho); }
 .saldo-sub { display: flex; justify-content: center; gap: 10px; font-size: .88rem; }
+
+.saldo-por-conta {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 12px 0 14px;
+}
+.saldo-item {
+  background: var(--fundo);
+  border: 1px solid var(--borda);
+  border-radius: 12px;
+  padding: 10px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.saldo-item-nome { font-size: .72rem; font-weight: 600; color: var(--texto-suave); text-transform: uppercase; letter-spacing: .4px; }
+.saldo-item-valor { font-size: 1.05rem; font-weight: 700; }
+.saldo-item-valor.positivo { color: var(--verde); }
+.saldo-item-valor.negativo { color: var(--vermelho); }
 
 .tag { padding: 4px 12px; border-radius: 999px; font-weight: 600; }
 .tag-entrada { background: var(--verde-fundo); color: var(--verde); }
