@@ -51,7 +51,12 @@ body {
   justify-content: center;
   text-decoration: none;
 }
-.topo h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: .3px; }
+.topo h1 {
+  font-size: 1.25rem; font-weight: 700; letter-spacing: .3px;
+  text-align: left;
+  margin: 0;
+  padding-right: 96px; /* espaço p/ os botões à direita */
+}
 .sync-status {
   font-size: .72rem;
   font-weight: 400;
