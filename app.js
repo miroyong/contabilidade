@@ -519,6 +519,7 @@
   function salvarLancamento(dados) {
     var editando = state.editando;
     var eraEdicao = !!editando;
+    var tipo = dados.tipo;
     var item = {
       linha: eraEdicao ? editando.linha : -Date.now(), // provisória até o servidor responder
       data: dados.data,
@@ -526,46 +527,52 @@
       categoria: dados.categoria,
       conta: dados.conta,
       valor: dados.valor,
-      _tipo: dados.tipo
+      _tipo: tipo
     };
 
-    // ---- otimista: aplica na lista e renderiza imediatamente ----
+    // otimista: aplica na lista e renderiza já (não confirma o usuário, só a UI)
     if (eraEdicao) {
-      var listaE = (dados.tipo === 'entrada' ? state.entradas : state.saidas);
+      var listaE = (tipo === 'entrada' ? state.entradas : state.saidas);
       for (var i = 0; i < listaE.length; i++) {
         if (listaE[i].linha === editando.linha) { listaE[i] = item; break; }
       }
     } else {
-      (dados.tipo === 'entrada' ? state.entradas : state.saidas).push(item);
+      (tipo === 'entrada' ? state.entradas : state.saidas).push(item);
     }
     state.editando = null;
-    salvarCacheMes();
     fecharModal();
     renderTudo();
-    toast(eraEdicao ? 'Atualizado!' : (dados.recorrente ? 'Adicionado! Criando próximos meses…' : 'Adicionado!'));
+    syncStatus(true, 'salvando…');
 
-    // ---- confirma no servidor em background ----
+    // SÓ confirma sucesso DEPOIS da resposta real do servidor — assim o toast
+    // e o cache nunca "mentem": se o servidor rejeitar (ex.: aba do mês ainda
+    // não existe, sem rede, timeout), o usuário vê o erro e o cache NÃO sai cheio.
     var prom = eraEdicao
       ? chamar('atualizar', Object.assign({ mes: state.mes }, editando, dados))
       : chamar('adicionar', Object.assign({ mes: state.mes }, dados));
-    syncStatus(true, 'salvando…');
+
     prom.then(function (r) {
       syncStatus(false);
-      if (!r.ok) { toast('Erro ao salvar: ' + r.erro); recarregarMes(); return; }
-      // ajusta a linha real do item recém-criado
+      if (!r.ok) {
+        toast('Erro ao salvar: ' + (r.erro || 'tente criar a aba do mês antes.'));
+        recarregarMes(); // desfaz o otimista com o que está no servidor
+        return;
+      }
+      // servidor confirmou → atualiza a linha real e REGRAVA o cache com a verdade
       if (!eraEdicao && r.linha) {
-        var listaN = (dados.tipo === 'entrada' ? state.entradas : state.saidas);
+        var listaN = (tipo === 'entrada' ? state.entradas : state.saidas);
         for (var j = 0; j < listaN.length; j++) {
           if (listaN[j].linha === item.linha) { listaN[j].linha = r.linha; break; }
         }
-        salvarCacheMes();
-        renderTudo();
       }
+      salvarCacheMes();
+      renderTudo();
+      toast(eraEdicao ? 'Atualizado!' : (dados.recorrente ? 'Adicionado! Criando próximos meses…' : 'Adicionado!'));
       if (dados.recorrente && !eraEdicao) criarRecorrentes(dados, dados.recorrenteMeses);
     }).catch(function (e) {
       syncStatus(false);
       toast('Erro ao salvar: ' + e.message);
-      recarregarMes();
+      recarregarMes(); // desfaz o otimista: o cache volta a refletir o servidor
     });
   }
 
