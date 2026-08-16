@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=17">
+<link rel="stylesheet" href="style.css?v=18">
 </head>
 <body>
 
@@ -81,11 +81,11 @@
 
     <div class="cha-pix-config" id="pix-config" hidden>
       <h4>⚙️ Configuração do Pix (pagar o custo / dízimo)</h4>
-      <label>Chave Pix (CNPJ do recebedor)
-        <input type="text" id="pix-chave" inputmode="numeric" placeholder="00.000.000/0001-00">
+      <label>Chave Pix (CPF ou CNPJ do recebedor)
+        <input type="text" id="pix-chave" inputmode="numeric" placeholder="CPF (11 dígitos) ou CNPJ (14 dígitos)">
       </label>
       <label>Nome (quem recebe)
-        <input type="text" id="pix-nome" placeholder="Nome da empresa">
+        <input type="text" id="pix-nome" placeholder="Nome da empresa ou da pessoa">
       </label>
       <label>Cidade
         <input type="text" id="pix-cidade" placeholder="BRASILIA">
@@ -213,12 +213,12 @@
 
 <div id="toast" class="toast" hidden></div>
 
-<script src="config.js?v=17"></script>
-<script src="app.js?v=17"></script>
+<script src="config.js?v=18"></script>
+<script src="app.js?v=18"></script>
 <script>
   // Registra o service worker (PWA) — falha silenciosa se não suportado/Https.
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js?v=17').catch(function () {});
+    navigator.serviceWorker.register('service-worker.js?v=18').catch(function () {});
   }
 </script>
 </body>

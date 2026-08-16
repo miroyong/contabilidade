@@ -836,6 +836,11 @@
     var v = String(valor);
     return String(id).padStart(2, '0') + v.length.toString().padStart(2, '0') + v;
   }
+  // Aceita chave Pix numérica de CPF (11) ou CNPJ (14) dígitos.
+  function chavePixValida(chave) {
+    var d = String(chave || '').replace(/\D/g, '');
+    return d.length === 11 || d.length === 14;
+  }
   function pixStr(chavePix, nome, cidade, valorCentavos) {
     // Monta o payload Pix (BR Code) com valor fixo em centavos.
     var merchan = nome.slice(0, 25);
@@ -873,8 +878,8 @@
   // Copia o código Pix (payload BR Code) para o clipboard e tenta abrir o PagBank.
   function pixCopiar() {
     var cfg = cacheGet('pixconfig') || {};
-    if (!cfg || String(cfg.chave || '').replace(/\D/g, '').length !== 14) {
-      toast('Primeiro configure o CNPJ da chave Pix (☰ Pix).');
+    if (!cfg || !chavePixValida(cfg.chave)) {
+      toast('Primeiro configure o CPF ou CNPJ da chave Pix (☰ Pix).');
       abrirConfigPix(); return;
     }
     var c = state.chaveiros;
@@ -921,7 +926,7 @@
       cidade: ($('pix-cidade') ? $('pix-cidade').value : '').trim() || 'BRASILIA',
       abrirApp: $('pix-abrir') ? $('pix-abrir').checked : true
     };
-    if (String(cfg.chave).replace(/\D/g, '').length !== 14) { toast('CNPJ precisa de 14 dígitos.'); return; }
+    if (!chavePixValida(cfg.chave)) { toast('CPF (11) ou CNPJ (14) precisa de dígitos válidos.'); return; }
     cacheSet('pixconfig', cfg);
     toast('Configuração do Pix salva!');
     if ($('pix-config')) $('pix-config').hidden = true;
@@ -975,7 +980,7 @@
     var cfg = cacheGet('pixconfig') || {};
     var btnC = $('pix-btn-custo'), btnD = $('pix-btn-dizimo');
     if (btnC && btnD) {
-      var ok = cfg && String(cfg.chave || '').replace(/\D/g, '').length === 14;
+      var ok = cfg && chavePixValida(cfg.chave);
       btnC.hidden = !ok; btnD.hidden = !ok;
       if (ok) { btnC.dataset.centavos = Math.round(custo * 100); btnD.dataset.centavos = Math.round(dizimo * 100); }
     }
