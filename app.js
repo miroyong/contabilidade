@@ -895,11 +895,25 @@
     copiarClip(payload, function () {
       toast((alvo === 'dizimo' ? 'Código Pix do dízimo' : 'Código Pix do custo') + ' copiado!');
     });
-    // tenta abrir o PagBank (deep link). Se falhar, o código já está copiado.
+    // tenta abrir o PagBank (App Link via click com user gesture).
+    // NÃO usar location.href: não dispara o handoff pro app no Android.
     if (cfg.abrirApp !== false) {
-      var url = 'https://pagseguro.uol.com.br/pix/';  // página/descarga PagBank
-      try { if (window.location) window.location.href = url; } catch (e) {}
+      abrirPagBankApp();
     }
+  }
+  // Abre o app PagBank via Android App Link (host verificado no assetlinks.json
+  // -> br.com.uol.ps.myaccount). Um <a>.click() real conta como gesto do usuário,
+  // o que torna o handoff pro app muito mais confiável que location.href.
+  function abrirPagBankApp() {
+    try {
+      var a = document.createElement('a');
+      a.href = 'https://pagbank.com.br/conta-digital/pix';
+      a.rel = 'noopener';
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (e) { /* código já foi copiado: a colagem manual ainda funciona */ }
   }
   function copiarClip(texto, cb) {
     function fallback() {
