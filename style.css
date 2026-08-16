@@ -7,6 +7,8 @@
   --vermelho: #dc2626;
   --vermelho-fundo: #fdeaea;
   --azul: #2563eb;
+  --primaria: #16a34a;          /* cor padrão da aba ativa / acentos */
+  --cha-ativa: #d97706;         /* cor da aba Chaveiros quando ativa (âmbar) */
   --texto: #1f2937;
   --texto-suave: #6b7280;
   --borda: #e5e7eb;
@@ -405,6 +407,10 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
   background: var(--primaria);
   color: #fff;
   border-color: var(--primaria);
+}
+.viz-btn[data-viz="cha"].ativo {
+  background: var(--cha-ativa);
+  border-color: var(--cha-ativa);
 }
 .chaveiros .cha-dica {
   font-size: 0.85rem;

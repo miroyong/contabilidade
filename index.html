@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=12">
+<link rel="stylesheet" href="style.css?v=13">
 </head>
 <body>
 
@@ -57,8 +57,11 @@
       </div>
     </div>
 
-    <label class="cha-valor">Dinheiro apurado no dia (R$)
-      <input type="text" id="cha-caixa" inputmode="decimal" placeholder="0,00">
+    <label class="cha-valor">Dinheiro apurado — Pix (R$)
+      <input type="text" id="cha-pix" inputmode="decimal" placeholder="0,00">
+    </label>
+    <label class="cha-valor">Dinheiro apurado — Físico (R$)
+      <input type="text" id="cha-fisico" inputmode="decimal" placeholder="0,00">
     </label>
     <label class="cha-valor">Alimentação gasta da arrecadação (R$)
       <input type="text" id="cha-almoco" inputmode="decimal" placeholder="0,00">
@@ -192,12 +195,12 @@
 
 <div id="toast" class="toast" hidden></div>
 
-<script src="config.js?v=12"></script>
-<script src="app.js?v=12"></script>
+<script src="config.js?v=13"></script>
+<script src="app.js?v=13"></script>
 <script>
   // Registra o service worker (PWA) — falha silenciosa se não suportado/Https.
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js?v=12').catch(function () {});
+    navigator.serviceWorker.register('service-worker.js?v=13').catch(function () {});
   }
 </script>
 </body>

@@ -832,26 +832,33 @@
       'ab': Math.max(0, chaQtd('cha-levou-ab') - chaQtd('cha-voltou-ab'))
     };
     var custo = vendas['3d'] * CHA_CUSTOS['3d'] + vendas['2d'] * CHA_CUSTOS['2d'] + vendas['ab'] * CHA_CUSTOS['ab'];
-    var receita = chaVal('cha-caixa');
-    var dizimo = receita * 0.10;
+    var receitaPix = chaVal('cha-pix');
+    var receitaFis = chaVal('cha-fisico');
+    var receita = receitaPix + receitaFis;
+    // dízimo = 10% do que sobra APÓS descontar o custo da mercadoria
+    // (ex.: 3D de R$20 com custo R$5 -> 10% de R$15 = R$1,50). Nunca negativo.
+    var dizimo = Math.max(0, Math.round((receita - custo) * 0.10 * 100) / 100);
     var alm = chaVal('cha-almoco');
     var transp = chaVal('cha-transporte');
     if (receita <= 0 && custo === 0 && alm === 0 && transp === 0) {
       toast('Informe o dinheiro apurado e/ou as quantidades.');
       return;
     }
-    state.chaveiros = { vendas: vendas, custo: custo, receita: receita, dizimo: dizimo, alm: alm, transp: transp };
-    var lucro = receita - custo;
+    state.chaveiros = { vendas: vendas, custo: custo, receita: receita, receitaPix: receitaPix, receitaFis: receitaFis, dizimo: dizimo, alm: alm, transp: transp };
+    var lucro = receita - custo;                               // bruto (antes de dízimo e extras)
+    var liquido = Math.max(0, lucro - dizimo - alm - transp);  // o que sobra de fato
     var linhas = [
       'Vendidos: 3D <b>' + vendas['3d'] + '</b> · 2D <b>' + vendas['2d'] + '</b> · Abridor <b>' + vendas['ab'] + '</b>',
-      'Dinheiro apurado <b>' + chaBRL(receita) + '</b>',
+      'Dinheiro apurado <b>' + chaBRL(receita) + '</b> (Pix ' + chaBRL(receitaPix) + ' · Físico ' + chaBRL(receitaFis) + ')',
       'Custo da mercadoria <b>' + chaBRL(custo) + '</b>',
-      'Dízimo (10%) <b>' + chaBRL(dizimo) + '</b>',
+      'Dízimo (10% da margem) <b>' + chaBRL(dizimo) + '</b>',
       'Alimentação <b>' + chaBRL(alm) + '</b>',
       'Transporte <b>' + chaBRL(transp) + '</b>'
     ].map(function (l) { return '<div class="linha">' + l + '</div>'; }).join('');
     var lucroCls = lucro >= 0 ? 'lucro-positivo' : 'lucro-negativo';
+    var liquidoCls = liquido >= 0 ? 'lucro-positivo' : 'lucro-negativo';
     linhas += '<div class="linha tot">LUCRO BRUTO <b class="' + lucroCls + '">' + chaBRL(lucro) + '</b></div>';
+    linhas += '<div class="linha tot">LIQUIDO (após dízimo+alim+transp) <b class="' + liquidoCls + '">' + chaBRL(liquido) + '</b></div>';
     $('cha-resumo').innerHTML = linhas;
     $('cha-resumo').hidden = false;
     $('cha-lancar').hidden = false;
@@ -863,7 +870,8 @@
     if (!state.mes) { toast('Selecione/ crie um mês na aba Financeiro antes.'); return; }
     var base = { mes: state.mes, data: hojeISO() };
     var itens = [];
-    if (c.receita > 0) itens.push({ tipo: 'entrada', descricao: 'Venda de chaveiros (arrecadação)', categoria: 'Vendas', conta: 'Físico', valor: c.receita });
+    if (c.receitaPix > 0) itens.push({ tipo: 'entrada', descricao: 'Venda de chaveiros (arrecadação)', categoria: 'Vendas', conta: 'Pix', valor: c.receitaPix });
+    if (c.receitaFis > 0) itens.push({ tipo: 'entrada', descricao: 'Venda de chaveiros (arrecadação)', categoria: 'Vendas', conta: 'Físico', valor: c.receitaFis });
     if (c.custo > 0) itens.push({ tipo: 'saida', descricao: 'Custo chaveiros (mercadoria)', categoria: 'Custos', conta: 'Físico', valor: c.custo });
     if (c.dizimo > 0) itens.push({ tipo: 'saida', descricao: 'Dízimo (venda de chaveiros)', categoria: 'Dízimo', conta: 'Físico', valor: c.dizimo });
     if (c.alm > 0) itens.push({ tipo: 'saida', descricao: 'Alimentação (arrecadação)', categoria: 'Alimentação', conta: 'Físico', valor: c.alm });
@@ -886,7 +894,7 @@
       $('cha-lancar').hidden = true;
       $('cha-resumo').hidden = true;
       ['cha-levou-3d','cha-levou-2d','cha-levou-ab','cha-voltou-3d','cha-voltou-2d','cha-voltou-ab',
-       'cha-caixa','cha-almoco','cha-transporte'].forEach(function (id) { $(id).value = ''; });
+       'cha-pix','cha-fisico','cha-almoco','cha-transporte'].forEach(function (id) { $(id).value = ''; });
       state.chaveiros = null;
       visualizar('fin');
     }).catch(function (e) {
