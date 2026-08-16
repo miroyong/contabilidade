@@ -815,6 +815,51 @@
   function chaVal(id) {
     return parseValor($(id).value) || 0;
   }
+
+  // ---------------------- Pix: BR Code (payload copia-e-cola) ----------------------
+  // Monta o payload est%C3%A1tico/din%C3%A2mico Pix conforme a norma do BACEN.
+  // A chave %C3%A9 o CNPJ (campo 26). Nome (59) e cidade (60) s%C3%A3o obrigat%C3%B3rios.
+  function pixCRC16(str) {
+    // CRC-16/CCITT-FALSE (polin%C3%B4mio 0x1021, init 0xFFFF) - usada pelo Pix
+    var crc = 0xFFFF;
+    for (var i = 0; i < str.length; i++) {
+      crc ^= str.charCodeAt(i) << 8;
+      for (var j = 0; j < 8; j++) {
+        crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) : (crc << 1);
+        crc &= 0xFFFF;
+      }
+    }
+    return crc.toString(16).toUpperCase().padStart(4, '0');
+  }
+  function pixEMV(id, valor) {
+    // helper: id de 2 d%C3%ADgitos + valor (inteiro, em centavos quando num%C3%A9rico)
+    var v = String(valor);
+    return String(id).padStart(2, '0') + v.length.toString().padStart(2, '0') + v;
+  }
+  function pixStr(chavePix, nome, cidade, valorCentavos) {
+    // Monta o payload Pix (BR Code) com valor fixo em centavos.
+    var merchan = nome.slice(0, 25);
+    var cit = cidade.slice(0, 15);
+    var chave = String(chavePix).replace(/\D/g, '');
+    var gui46 = '0014br.gov.bcb.pix01' + (chave.length < 10 ? '0' : '') + chave.length + chave;
+    var p = '000201' + pixEMV('26', gui46);
+    p += '52040000';
+    p += '5303986';
+    if (valorCentavos > 0) {
+      // Campo 54 (valor): 2 casas decimais com ponto, sem separador de milhar
+      // (norma BACEN / EMVCo Transaction Amount). Ex.: 1000 centavos -> "10.00".
+      var valor = (valorCentavos / 100).toFixed(2);
+      p += pixEMV('54', valor);
+    }
+    p += '5802BR';
+    p += pixEMV('59', merchan);
+    p += pixEMV('60', cit);
+    p += pixEMV('62', '05' + '***');
+    p += '63040000';
+    var crc = pixCRC16(p);
+    p = p.slice(0, -4) + crc;
+    return p;
+  }
   function visualizar(viz) {
     document.querySelectorAll('#viz .viz-btn').forEach(function (b) {
       b.classList.toggle('ativo', b.dataset.viz === viz);
@@ -824,6 +869,70 @@
       if (s.id === 'chaveiros-section') s.hidden = (viz !== 'cha');
       else s.style.display = (viz === 'cha') ? 'none' : '';
     });
+  }
+  // Copia o código Pix (payload BR Code) para o clipboard e tenta abrir o PagBank.
+  function pixCopiar() {
+    var cfg = cacheGet('pixconfig') || {};
+    if (!cfg || String(cfg.chave || '').replace(/\D/g, '').length !== 14) {
+      toast('Primeiro configure o CNPJ da chave Pix (☰ Pix).');
+      abrirConfigPix(); return;
+    }
+    var c = state.chaveiros;
+    if (!c) return;
+    // valor = do botão que disparou (custo ou dízimo)
+    var bt = $('pix-btn-custo');
+    var alvo = this && this.dataset && this.dataset.tipo === 'dizimo' ? 'dizimo' : 'custo';
+    var centavos = 0;
+    if (alvo === 'dizimo') centavos = Math.round(c.dizimo * 100);
+    else centavos = Math.round(c.custo * 100);
+    if (centavos <= 0) { toast('Valor zerado: nada a cobrar.'); return; }
+    var payload = pixStr(cfg.chave, cfg.nome || 'Recebedor', cfg.cidade || 'BRASILIA', centavos);
+    copiarClip(payload, function () {
+      toast((alvo === 'dizimo' ? 'Código Pix do dízimo' : 'Código Pix do custo') + ' copiado!');
+    });
+    // tenta abrir o PagBank (deep link). Se falhar, o código já está copiado.
+    if (cfg.abrirApp !== false) {
+      var url = 'https://pagseguro.uol.com.br/pix/';  // página/descarga PagBank
+      try { if (window.location) window.location.href = url; } catch (e) {}
+    }
+  }
+  function copiarClip(texto, cb) {
+    function fallback() {
+      try {
+        var ta = document.createElement('textarea');
+        ta.value = texto; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        var ok = document.execCommand('copy'); document.body.removeChild(ta);
+        if (cb) cb();
+      } catch (e) { }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(texto).then(function () { if (cb) cb(); }, fallback);
+    } else fallback();
+  }
+  function abrirConfigPix() {
+    var f = $('pix-config');
+    if (f) f.hidden = !f.hidden;
+  }
+  function salvarConfigPix() {
+    var cfg = {
+      chave: ($('pix-chave') ? $('pix-chave').value : '').trim(),
+      nome: ($('pix-nome') ? $('pix-nome').value : '').trim() || 'Recebedor',
+      cidade: ($('pix-cidade') ? $('pix-cidade').value : '').trim() || 'BRASILIA',
+      abrirApp: $('pix-abrir') ? $('pix-abrir').checked : true
+    };
+    if (String(cfg.chave).replace(/\D/g, '').length !== 14) { toast('CNPJ precisa de 14 dígitos.'); return; }
+    cacheSet('pixconfig', cfg);
+    toast('Configuração do Pix salva!');
+    if ($('pix-config')) $('pix-config').hidden = true;
+    if (state.chaveiros) chaCalcular();
+  }
+  function carregarConfigPix() {
+    var cfg = cacheGet('pixconfig') || {};
+    if ($('pix-chave')) $('pix-chave').value = cfg.chave || '';
+    if ($('pix-nome')) $('pix-nome').value = cfg.nome || '';
+    if ($('pix-cidade')) $('pix-cidade').value = cfg.cidade || '';
+    if ($('pix-abrir')) $('pix-abrir').checked = cfg.abrirApp !== false;
   }
   function chaCalcular() {
     var vendas = {
@@ -862,6 +971,14 @@
     $('cha-resumo').hidden = false;
     $('cha-lancar').hidden = false;
     $('cha-lancar').disabled = false;
+    // botões Pix: gera código copia-e-cola com o valor do custo ou do dízimo
+    var cfg = cacheGet('pixconfig') || {};
+    var btnC = $('pix-btn-custo'), btnD = $('pix-btn-dizimo');
+    if (btnC && btnD) {
+      var ok = cfg && String(cfg.chave || '').replace(/\D/g, '').length === 14;
+      btnC.hidden = !ok; btnD.hidden = !ok;
+      if (ok) { btnC.dataset.centavos = Math.round(custo * 100); btnD.dataset.centavos = Math.round(dizimo * 100); }
+    }
   }
   function chaLancar() {
     var c = state.chaveiros;
@@ -909,6 +1026,12 @@
   });
   $('cha-calcular').addEventListener('click', chaCalcular);
   $('cha-lancar').addEventListener('click', chaLancar);
+  var __pixBtC = $('pix-btn-custo'), __pixBtD = $('pix-btn-dizimo');
+  if (__pixBtC) __pixBtC.addEventListener('click', function (e) { e.stopPropagation(); pixCopiar.call(__pixBtC); });
+  if (__pixBtD) __pixBtD.addEventListener('click', function (e) { e.stopPropagation(); pixCopiar.call(__pixBtD); });
+  if ($('pix-btn-config')) $('pix-btn-config').addEventListener('click', abrirConfigPix);
+  if ($('pix-salvar')) $('pix-salvar').addEventListener('click', salvarConfigPix);
+  carregarConfigPix();
   visualizar('fin');
 
   // ------------------------------------------------------------ start

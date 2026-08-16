@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=16">
+<link rel="stylesheet" href="style.css?v=17">
 </head>
 <body>
 
@@ -71,7 +71,28 @@
 
     <div id="cha-resumo" class="cha-resumo" hidden></div>
 
+    <div class="cha-pix-botoes" id="cha-pix-botoes">
+      <button type="button" class="btn-pix btn-pix-config-toggle" id="pix-btn-config">⚙️ Pix</button>
+      <button type="button" class="btn-pix" id="pix-btn-custo" data-tipo="custo" hidden>⬇ Pix do custo</button>
+      <button type="button" class="btn-pix" id="pix-btn-dizimo" data-tipo="dizimo" hidden>⬇ Pix do dízimo</button>
+    </div>
+
     <button type="button" class="btn-primario cha-lancar" id="cha-lancar" hidden>💾 Lançar tudo na planilha</button>
+
+    <div class="cha-pix-config" id="pix-config" hidden>
+      <h4>⚙️ Configuração do Pix (pagar o custo / dízimo)</h4>
+      <label>Chave Pix (CNPJ do recebedor)
+        <input type="text" id="pix-chave" inputmode="numeric" placeholder="00.000.000/0001-00">
+      </label>
+      <label>Nome (quem recebe)
+        <input type="text" id="pix-nome" placeholder="Nome da empresa">
+      </label>
+      <label>Cidade
+        <input type="text" id="pix-cidade" placeholder="BRASILIA">
+      </label>
+      <label class="pix-check"><input type="checkbox" id="pix-abrir" checked> Abrir o PagBank ao copiar</label>
+      <button type="button" class="btn-pix btn-pix-config" id="pix-salvar">💾 Salvar Pix</button>
+    </div>
   </section>
 
   <div id="aviso-config" class="aviso aviso-erro" hidden>
@@ -192,12 +213,12 @@
 
 <div id="toast" class="toast" hidden></div>
 
-<script src="config.js?v=16"></script>
-<script src="app.js?v=16"></script>
+<script src="config.js?v=17"></script>
+<script src="app.js?v=17"></script>
 <script>
   // Registra o service worker (PWA) — falha silenciosa se não suportado/Https.
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js?v=16').catch(function () {});
+    navigator.serviceWorker.register('service-worker.js?v=17').catch(function () {});
   }
 </script>
 </body>
