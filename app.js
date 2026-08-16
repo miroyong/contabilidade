@@ -18,7 +18,8 @@
     categorias: [],
     contas: [],
     filtro: { tipo: 'todos', categoria: '', conta: '', busca: '' },
-    editando: null      // { tipo: 'entrada'|'saida', linha: N }
+    editando: null,     // { tipo: 'entrada'|'saida', linha: N }
+    salvando: false     // trava toque duplo no salvar (evita duplicar)
   };
 
   var $ = function (id) { return document.getElementById(id); };
@@ -517,11 +518,19 @@
   }
 
   function salvarLancamento(dados) {
+    if (state.salvando) return; // trava toque duplo: evita duplicar por submit concorrente
+    state.salvando = true;
+
     var editando = state.editando;
     var eraEdicao = !!editando;
     var tipo = dados.tipo;
+    var mudouTipo = eraEdicao && editando.tipo !== tipo;
+
     var item = {
-      linha: eraEdicao ? editando.linha : -Date.now(), // provisória até o servidor responder
+      // em edição SEM mudar tipo mantém a linha real; mudando tipo usa linha
+      // provisória (o item é remoção no tipo antigo + adição no novo);
+      // em item novo usa provisória até o servidor responder.
+      linha: (eraEdicao && !mudouTipo) ? editando.linha : -Date.now(),
       data: dados.data,
       descricao: dados.descricao,
       categoria: dados.categoria,
@@ -530,12 +539,18 @@
       _tipo: tipo
     };
 
-    // otimista: aplica na lista e renderiza já (não confirma o usuário, só a UI)
-    if (eraEdicao) {
+    // ---- otimista: aplica na lista e renderiza já (não confirma, só a UI) ----
+    if (eraEdicao && !mudouTipo) {
       var listaE = (tipo === 'entrada' ? state.entradas : state.saidas);
       for (var i = 0; i < listaE.length; i++) {
         if (listaE[i].linha === editando.linha) { listaE[i] = item; break; }
       }
+    } else if (eraEdicao && mudouTipo) {
+      // removo do tipo antigo (linha real lá) e entro no novo tipo
+      var listaAntiga = (editando.tipo === 'entrada' ? state.entradas : state.saidas);
+      state[editando.tipo === 'entrada' ? 'entradas' : 'saidas'] =
+        listaAntiga.filter(function (l) { return l.linha !== editando.linha; });
+      (tipo === 'entrada' ? state.entradas : state.saidas).push(item);
     } else {
       (tipo === 'entrada' ? state.entradas : state.saidas).push(item);
     }
@@ -545,24 +560,43 @@
     syncStatus(true, 'salvando…');
 
     // SÓ confirma sucesso DEPOIS da resposta real do servidor — assim o toast
-    // e o cache nunca "mentem": se o servidor rejeitar (ex.: aba do mês ainda
-    // não existe, sem rede, timeout), o usuário vê o erro e o cache NÃO sai cheio.
-    var prom = eraEdicao
-      ? chamar('atualizar', Object.assign({ mes: state.mes }, editando, dados))
-      : chamar('adicionar', Object.assign({ mes: state.mes }, dados));
+    // e o cache nunca "mentem": se o servidor rejeitar (sem rede, timeout, etc.),
+    // o usuário vê o erro e o cache NÃO sai cheio. Mudar o tipo de um item:
+    // como na planilha entrada/saída ficam em colunas diferentes, faz-se
+    // ADICIONAR no tipo novo + EXCLUIR no tipo antigo (serializado).
+    var base = { mes: state.mes };
+    var prom;
+    if (eraEdicao && !mudouTipo) {
+      prom = chamar('atualizar', Object.assign({}, base, editando, dados));
+    } else if (eraEdicao && mudouTipo) {
+      prom = chamar('adicionar', Object.assign({}, base, dados))
+        .then(function (r) {
+          if (!r.ok) return r;
+          // grava a linha real no item recem-adicionado
+          var listaN = (tipo === 'entrada' ? state.entradas : state.saidas);
+          for (var j = 0; j < listaN.length; j++) {
+            if (listaN[j].linha === item.linha) { listaN[j].linha = r.linha; break; }
+          }
+          salvarCacheMes();
+          return chamar('excluir', { mes: state.mes, tipo: editando.tipo, linha: editando.linha });
+        });
+    } else {
+      prom = chamar('adicionar', Object.assign({}, base, dados));
+    }
 
     prom.then(function (r) {
       syncStatus(false);
+      state.salvando = false;
       if (!r.ok) {
         toast('Erro ao salvar: ' + (r.erro || 'tente criar a aba do mês antes.'));
         recarregarMes(); // desfaz o otimista com o que está no servidor
         return;
       }
-      // servidor confirmou → atualiza a linha real e REGRAVA o cache com a verdade
+      // adicionar simples confirmado → grava a linha real no item provisório
       if (!eraEdicao && r.linha) {
-        var listaN = (tipo === 'entrada' ? state.entradas : state.saidas);
-        for (var j = 0; j < listaN.length; j++) {
-          if (listaN[j].linha === item.linha) { listaN[j].linha = r.linha; break; }
+        var listaN2 = (tipo === 'entrada' ? state.entradas : state.saidas);
+        for (var j2 = 0; j2 < listaN2.length; j2++) {
+          if (listaN2[j2].linha === item.linha) { listaN2[j2].linha = r.linha; break; }
         }
       }
       salvarCacheMes();
@@ -571,6 +605,7 @@
       if (dados.recorrente && !eraEdicao) criarRecorrentes(dados, dados.recorrenteMeses);
     }).catch(function (e) {
       syncStatus(false);
+      state.salvando = false;
       toast('Erro ao salvar: ' + e.message);
       recarregarMes(); // desfaz o otimista: o cache volta a refletir o servidor
     });
