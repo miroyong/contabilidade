@@ -838,19 +838,22 @@
     // dízimo = 10% do que sobra APÓS descontar o custo da mercadoria
     // (ex.: 3D de R$20 com custo R$5 -> 10% de R$15 = R$1,50). Nunca negativo.
     var dizimo = Math.max(0, Math.round((receita - custo) * 0.10 * 100) / 100);
+    var nome = ($('cha-nome') ? $('cha-nome').value : '').trim();
     if (receita <= 0 && custo === 0) {
       toast('Informe o total do dia e/ou as quantidades.');
       return;
     }
-    state.chaveiros = { vendas: vendas, custo: custo, receita: receita, receitaPix: receitaPix, receitaFis: receitaFis, dizimo: dizimo };
+    state.chaveiros = { nome: nome, vendas: vendas, custo: custo, receita: receita, receitaPix: receitaPix, receitaFis: receitaFis, dizimo: dizimo };
     var lucro = receita - custo;                                        // bruto (antes do dízimo)
     var liquido = Math.max(0, lucro - dizimo);                          // o que sobra após o dízimo
-    var linhas = [
+    var linhas = [];
+    if (nome) linhas.push('Quem arrecadou: <b>' + nome + '</b>');
+    linhas = linhas.concat([
       'Vendidos: 3D <b>' + vendas['3d'] + '</b> · 2D <b>' + vendas['2d'] + '</b> · Abridor <b>' + vendas['ab'] + '</b>',
       'Total do dia <b>' + chaBRL(receita) + '</b> (Pix ' + chaBRL(receitaPix) + ' · Físico ' + chaBRL(receitaFis) + ')',
       'Custo da mercadoria <b>' + chaBRL(custo) + '</b>',
       'Dízimo (10% da margem) <b>' + chaBRL(dizimo) + '</b>'
-    ].map(function (l) { return '<div class="linha">' + l + '</div>'; }).join('');
+    ]).map(function (l) { return '<div class="linha">' + l + '</div>'; }).join('');
     var lucroCls = lucro >= 0 ? 'lucro-positivo' : 'lucro-negativo';
     var liquidoCls = liquido >= 0 ? 'lucro-positivo' : 'lucro-negativo';
     linhas += '<div class="linha tot">LUCRO BRUTO <b class="' + lucroCls + '">' + chaBRL(lucro) + '</b></div>';
@@ -865,9 +868,10 @@
     if (!c) return;
     if (!state.mes) { toast('Selecione/ crie um mês na aba Financeiro antes.'); return; }
     var base = { mes: state.mes, data: hojeISO() };
+    var quem = c.nome ? ' — ' + c.nome : '';
     var itens = [];
-    if (c.receitaPix > 0) itens.push({ tipo: 'entrada', descricao: 'Venda de chaveiros (arrecadação)', categoria: 'Vendas', conta: 'Pix', valor: c.receitaPix });
-    if (c.receitaFis > 0) itens.push({ tipo: 'entrada', descricao: 'Venda de chaveiros (arrecadação)', categoria: 'Vendas', conta: 'Físico', valor: c.receitaFis });
+    if (c.receitaPix > 0) itens.push({ tipo: 'entrada', descricao: 'Venda de chaveiros (arrecadação' + quem + ')', categoria: 'Vendas', conta: 'Pix', valor: c.receitaPix });
+    if (c.receitaFis > 0) itens.push({ tipo: 'entrada', descricao: 'Venda de chaveiros (arrecadação' + quem + ')', categoria: 'Vendas', conta: 'Físico', valor: c.receitaFis });
     if (c.custo > 0) itens.push({ tipo: 'saida', descricao: 'Custo chaveiros (mercadoria)', categoria: 'Custos', conta: 'Físico', valor: c.custo });
     if (c.dizimo > 0) itens.push({ tipo: 'saida', descricao: 'Dízimo (venda de chaveiros)', categoria: 'Dízimo', conta: 'Físico', valor: c.dizimo });
     if (!itens.length) { toast('Nada a lançar.'); return; }
@@ -887,7 +891,7 @@
       toast(itens.length + ' lançamento(s) gravados!');
       $('cha-lancar').hidden = true;
       $('cha-resumo').hidden = true;
-      ['cha-levou-3d','cha-levou-2d','cha-levou-ab','cha-voltou-3d','cha-voltou-2d','cha-voltou-ab',
+      ['cha-nome','cha-levou-3d','cha-levou-2d','cha-levou-ab','cha-voltou-3d','cha-voltou-2d','cha-voltou-ab',
        'cha-pix','cha-fisico'].forEach(function (id) { $(id).value = ''; });
       state.chaveiros = null;
       visualizar('fin');

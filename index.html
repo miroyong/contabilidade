@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=14">
+<link rel="stylesheet" href="style.css?v=15">
 </head>
 <body>
 
@@ -57,6 +57,9 @@
       </div>
     </div>
 
+    <label class="cha-valor">Nome (quem arrecadou)
+      <input type="text" id="cha-nome" placeholder="Ex.: Maria">
+    </label>
     <label class="cha-valor">Total do dia — Pix (R$)
       <input type="text" id="cha-pix" inputmode="decimal" placeholder="0,00">
     </label>
@@ -189,12 +192,12 @@
 
 <div id="toast" class="toast" hidden></div>
 
-<script src="config.js?v=14"></script>
-<script src="app.js?v=14"></script>
+<script src="config.js?v=15"></script>
+<script src="app.js?v=15"></script>
 <script>
   // Registra o service worker (PWA) — falha silenciosa se não suportado/Https.
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js?v=14').catch(function () {});
+    navigator.serviceWorker.register('service-worker.js?v=15').catch(function () {});
   }
 </script>
 </body>
