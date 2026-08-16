@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=15">
+<link rel="stylesheet" href="style.css?v=16">
 </head>
 <body>
 
@@ -42,18 +42,18 @@
     <div class="cha-produtos">
       <div class="cha-item">
         <h3>Chaveiro 3D · custo R$ 5</h3>
-        <label>Levou <input type="number" id="cha-levou-3d" min="0" value="0" inputmode="numeric"></label>
-        <label>Voltou <input type="number" id="cha-voltou-3d" min="0" value="0" inputmode="numeric"></label>
+        <label>Levou <input type="number" id="cha-levou-3d" min="0" inputmode="numeric" placeholder="0"></label>
+        <label>Voltou <input type="number" id="cha-voltou-3d" min="0" inputmode="numeric" placeholder="0"></label>
       </div>
       <div class="cha-item">
         <h3>Chaveiro 2D · custo R$ 2</h3>
-        <label>Levou <input type="number" id="cha-levou-2d" min="0" value="0" inputmode="numeric"></label>
-        <label>Voltou <input type="number" id="cha-voltou-2d" min="0" value="0" inputmode="numeric"></label>
+        <label>Levou <input type="number" id="cha-levou-2d" min="0" inputmode="numeric" placeholder="0"></label>
+        <label>Voltou <input type="number" id="cha-voltou-2d" min="0" inputmode="numeric" placeholder="0"></label>
       </div>
       <div class="cha-item">
         <h3>Abridor · custo R$ 1</h3>
-        <label>Levou <input type="number" id="cha-levou-ab" min="0" value="0" inputmode="numeric"></label>
-        <label>Voltou <input type="number" id="cha-voltou-ab" min="0" value="0" inputmode="numeric"></label>
+        <label>Levou <input type="number" id="cha-levou-ab" min="0" inputmode="numeric" placeholder="0"></label>
+        <label>Voltou <input type="number" id="cha-voltou-ab" min="0" inputmode="numeric" placeholder="0"></label>
       </div>
     </div>
 
@@ -192,12 +192,12 @@
 
 <div id="toast" class="toast" hidden></div>
 
-<script src="config.js?v=15"></script>
-<script src="app.js?v=15"></script>
+<script src="config.js?v=16"></script>
+<script src="app.js?v=16"></script>
 <script>
   // Registra o service worker (PWA) — falha silenciosa se não suportado/Https.
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js?v=15').catch(function () {});
+    navigator.serviceWorker.register('service-worker.js?v=16').catch(function () {});
   }
 </script>
 </body>
