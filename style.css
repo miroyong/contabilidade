@@ -381,3 +381,96 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
   color: var(--texto) !important;
   cursor: pointer;
 }
+
+
+/* ===== Aba Chaveiros ===== */
+.visualizacao {
+  display: flex;
+  gap: 8px;
+  padding: 0 14px;
+  margin: 8px 0 4px;
+}
+.viz-btn {
+  flex: 1;
+  padding: 10px 8px;
+  border: 1px solid var(--borda);
+  border-radius: 10px;
+  background: var(--cartao-bg);
+  color: var(--texto);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.viz-btn.ativo {
+  background: var(--primaria);
+  color: #fff;
+  border-color: var(--primaria);
+}
+.chaveiros .cha-dica {
+  font-size: 0.85rem;
+  opacity: 0.75;
+  margin: 4px 0 12px;
+}
+.chaveiros h3 {
+  font-size: 0.95rem;
+  margin: 6px 0 6px;
+}
+.cha-produtos {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.cha-item {
+  border: 1px solid var(--borda);
+  border-radius: 10px;
+  padding: 8px;
+  background: var(--fundo);
+}
+.cha-item label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.8rem;
+  gap: 2px;
+  margin: 4px 0;
+}
+.cha-item input,
+.cha-valor input {
+  padding: 7px;
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  background: var(--cartao-bg);
+  color: var(--texto);
+  width: 100%;
+  box-sizing: border-box;
+}
+.cha-valor {
+  display: block;
+  font-size: 0.85rem;
+  margin: 8px 0;
+}
+.cha-resumo {
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid var(--primaria);
+  border-radius: 10px;
+  background: var(--fundo);
+}
+.cha-resumo .linha {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 0.92rem;
+}
+.cha-resumo .linha b { text-align: right; }
+.cha-resumo .tot {
+  border-top: 1px solid var(--borda);
+  margin-top: 6px;
+  padding-top: 8px;
+}
+.cha-resumo .lucro-positivo { color: var(--positivo, #1a7f37); font-weight: 700; }
+.cha-resumo .lucro-negativo { color: var(--negativo, #c62828); font-weight: 700; }
+.cha-lancar { margin-top: 8px; }
+@media (max-width: 520px) {
+  .cha-produtos { grid-template-columns: 1fr; }
+}

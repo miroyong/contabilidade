@@ -803,6 +803,108 @@
     $('f-recorrente-wrap').hidden = !this.checked;
   });
 
+  // ------------------------------------------------------------ aba Chaveiros
+  var CHA_CUSTOS = { '3d': 5, '2d': 2, 'ab': 1 };
+  function chaBRL(v) {
+    return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+  function chaQtd(id) {
+    var v = parseInt($(id).value, 10);
+    return isFinite(v) && v > 0 ? v : 0;
+  }
+  function chaVal(id) {
+    return parseValor($(id).value) || 0;
+  }
+  function visualizar(viz) {
+    document.querySelectorAll('#viz .viz-btn').forEach(function (b) {
+      b.classList.toggle('ativo', b.dataset.viz === viz);
+    });
+    var chaSec = $('chaveiros-section');
+    document.querySelectorAll('main > section').forEach(function (s) {
+      if (s.id === 'chaveiros-section') s.hidden = (viz !== 'cha');
+      else s.style.display = (viz === 'cha') ? 'none' : '';
+    });
+  }
+  function chaCalcular() {
+    var vendas = {
+      '3d': Math.max(0, chaQtd('cha-levou-3d') - chaQtd('cha-voltou-3d')),
+      '2d': Math.max(0, chaQtd('cha-levou-2d') - chaQtd('cha-voltou-2d')),
+      'ab': Math.max(0, chaQtd('cha-levou-ab') - chaQtd('cha-voltou-ab'))
+    };
+    var custo = vendas['3d'] * CHA_CUSTOS['3d'] + vendas['2d'] * CHA_CUSTOS['2d'] + vendas['ab'] * CHA_CUSTOS['ab'];
+    var receita = chaVal('cha-caixa');
+    var dizimo = receita * 0.10;
+    var alm = chaVal('cha-almoco');
+    var transp = chaVal('cha-transporte');
+    if (receita <= 0 && custo === 0 && alm === 0 && transp === 0) {
+      toast('Informe o dinheiro apurado e/ou as quantidades.');
+      return;
+    }
+    state.chaveiros = { vendas: vendas, custo: custo, receita: receita, dizimo: dizimo, alm: alm, transp: transp };
+    var lucro = receita - custo;
+    var linhas = [
+      'Vendidos: 3D <b>' + vendas['3d'] + '</b> · 2D <b>' + vendas['2d'] + '</b> · Abridor <b>' + vendas['ab'] + '</b>',
+      'Dinheiro apurado <b>' + chaBRL(receita) + '</b>',
+      'Custo da mercadoria <b>' + chaBRL(custo) + '</b>',
+      'Dízimo (10%) <b>' + chaBRL(dizimo) + '</b>',
+      'Alimentação <b>' + chaBRL(alm) + '</b>',
+      'Transporte <b>' + chaBRL(transp) + '</b>'
+    ].map(function (l) { return '<div class="linha">' + l + '</div>'; }).join('');
+    var lucroCls = lucro >= 0 ? 'lucro-positivo' : 'lucro-negativo';
+    linhas += '<div class="linha tot">LUCRO BRUTO <b class="' + lucroCls + '">' + chaBRL(lucro) + '</b></div>';
+    $('cha-resumo').innerHTML = linhas;
+    $('cha-resumo').hidden = false;
+    $('cha-lancar').hidden = false;
+    $('cha-lancar').disabled = false;
+  }
+  function chaLancar() {
+    var c = state.chaveiros;
+    if (!c) return;
+    if (!state.mes) { toast('Selecione/ crie um mês na aba Financeiro antes.'); return; }
+    var base = { mes: state.mes, data: hojeISO() };
+    var itens = [];
+    if (c.receita > 0) itens.push({ tipo: 'entrada', descricao: 'Venda de chaveiros (arrecadação)', categoria: 'Vendas', conta: 'Físico', valor: c.receita });
+    if (c.custo > 0) itens.push({ tipo: 'saida', descricao: 'Custo chaveiros (mercadoria)', categoria: 'Custos', conta: 'Físico', valor: c.custo });
+    if (c.dizimo > 0) itens.push({ tipo: 'saida', descricao: 'Dízimo (venda de chaveiros)', categoria: 'Dízimo', conta: 'Físico', valor: c.dizimo });
+    if (c.alm > 0) itens.push({ tipo: 'saida', descricao: 'Alimentação (arrecadação)', categoria: 'Alimentação', conta: 'Físico', valor: c.alm });
+    if (c.transp > 0) itens.push({ tipo: 'saida', descricao: 'Transporte (arrecadação)', categoria: 'Transporte', conta: 'Físico', valor: c.transp });
+    if (!itens.length) { toast('Nada a lançar.'); return; }
+    $('cha-lancar').disabled = true;
+    syncStatus(true, 'lançando…');
+    var prom = Promise.resolve();
+    itens.forEach(function (it) {
+      prom = prom.then(function () {
+        return chamar('adicionar', Object.assign({}, base, it));
+      });
+    });
+    prom.then(function (r) {
+      syncStatus(false);
+      if (!r.ok) throw new Error(r.erro || 'não foi possível lançar na planilha.');
+      salvarCacheMes();
+      renderTudo();
+      toast(itens.length + ' lançamento(s) gravados!');
+      $('cha-lancar').hidden = true;
+      $('cha-resumo').hidden = true;
+      ['cha-levou-3d','cha-levou-2d','cha-levou-ab','cha-voltou-3d','cha-voltou-2d','cha-voltou-ab',
+       'cha-caixa','cha-almoco','cha-transporte'].forEach(function (id) { $(id).value = ''; });
+      state.chaveiros = null;
+      visualizar('fin');
+    }).catch(function (e) {
+      syncStatus(false);
+      $('cha-lancar').disabled = false;
+      toast('Erro ao lançar: ' + e.message);
+      recarregarMes();
+    });
+  }
+
+  // handlers da aba Chaveiros
+  document.querySelectorAll('#viz .viz-btn').forEach(function (b) {
+    b.addEventListener('click', function () { visualizar(b.dataset.viz); });
+  });
+  $('cha-calcular').addEventListener('click', chaCalcular);
+  $('cha-lancar').addEventListener('click', chaLancar);
+  visualizar('fin');
+
   // ------------------------------------------------------------ start
   var temaInit = cacheGet('tema') ||
     (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro');
