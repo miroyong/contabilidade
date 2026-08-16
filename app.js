@@ -909,20 +909,43 @@
   //  2) fallback: navega para o link de conta Pix (se o intent não resolver).
   // Se nada abrir, o código Pix JÁ foi copiado antes -> colagem manual funciona.
   function abrirPagBankApp() {
+    var fallbackUrl = 'https://www.pagbank.com.br/pix/';
+    // URI intent:// padrão do Android. package= pinha o app PagBank
+    // (br.com.uol.ps.myaccount). Se o app não estiver instalado, o próprio
+    // mecanismo de intents redireciona para o browser_fallback_url.
     var urlI =
       'intent://pagbank.com.br/conta-digital/pix#Intent;' +
       'scheme=https;package=br.com.uol.ps.myaccount;' +
-      'S.browser_fallback_url=https%3A%2F%2Fwww.pagbank.com.br%2Fpix%2F;end';
-    try { window.location.href = urlI; return; } catch (e) { /* tenta web */ }
-    try {
-      var a = document.createElement('a');
-      a.href = 'https://www.pagbank.com.br/pix/';
-      a.rel = 'noopener';
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    } catch (e2) { /* código já copiado: colagem manual */ }
+      'S.browser_fallback_url=' + encodeURIComponent(fallbackUrl) + ';end';
+    // IMPORTANTE: nada de window.location.href = intent://. O Chrome ignora
+    // location.href para scheme intent:// de forma SILENCIOSA (não lança
+    // exceção), então o return seguinte matava o fallback e o app nunca abria.
+    // O método que dispara o resolver de intents no Android é um <a>.click().
+    var a = document.createElement('a');
+    a.href = urlI;
+    a.style.display = 'none';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    try { a.click(); } catch (e) { /* segue para o fallback */ }
+    // Descarta o <a> do intent logo após o clique.
+    setTimeout(function () { if (a.parentNode) a.parentNode.removeChild(a); }, 50);
+    // Fallback temporal para o navegador (Desktop) e caso o click/Intent não
+    // tenha resolvido: se a página continuou visível (nada abriu por cima),
+    // abre o link web de conta Pix em nova aba.
+    setTimeout(function () {
+      if (document.hidden === undefined || !document.hidden) {
+        try {
+          var w = document.createElement('a');
+          w.href = fallbackUrl;
+          w.target = '_blank';
+          w.rel = 'noopener';
+          w.style.display = 'none';
+          document.body.appendChild(w);
+          w.click();
+          document.body.removeChild(w);
+        } catch (e2) { /* código já copiado: colagem manual */ }
+      }
+    }, 700);
   }
   function copiarClip(texto, cb) {
     function fallback() {
@@ -971,6 +994,8 @@
     var custo = vendas['3d'] * CHA_CUSTOS['3d'] + vendas['2d'] * CHA_CUSTOS['2d'] + vendas['ab'] * CHA_CUSTOS['ab'];
     var receitaPix = chaVal('cha-pix');
     var receitaFis = chaVal('cha-fisico');
+    var alimentacao = chaVal('cha-alimentacao');
+    var transporte = chaVal('cha-transporte');
     var receita = receitaPix + receitaFis;
     // dízimo = 10% do que sobra APÓS descontar o custo da mercadoria
     // (ex.: 3D de R$20 com custo R$5 -> 10% de R$15 = R$1,50). Nunca negativo.
@@ -980,16 +1005,18 @@
       toast('Informe o total do dia e/ou as quantidades.');
       return;
     }
-    state.chaveiros = { nome: nome, vendas: vendas, custo: custo, receita: receita, receitaPix: receitaPix, receitaFis: receitaFis, dizimo: dizimo };
+    state.chaveiros = { nome: nome, vendas: vendas, custo: custo, receita: receita, receitaPix: receitaPix, receitaFis: receitaFis, dizimo: dizimo, alimentacao: alimentacao, transporte: transporte };
     var lucro = receita - custo;                                        // bruto (antes do dízimo)
-    var liquido = Math.max(0, lucro - dizimo);                          // o que sobra após o dízimo
+    var liquido = Math.max(0, lucro - dizimo - alimentacao - transporte); // o que sobra após dízimo + alimentação + transporte
     var linhas = [];
     if (nome) linhas.push('Quem arrecadou: <b>' + nome + '</b>');
     linhas = linhas.concat([
       'Vendidos: 3D <b>' + vendas['3d'] + '</b> · 2D <b>' + vendas['2d'] + '</b> · Abridor <b>' + vendas['ab'] + '</b>',
       'Total do dia <b>' + chaBRL(receita) + '</b> (Pix ' + chaBRL(receitaPix) + ' · Físico ' + chaBRL(receitaFis) + ')',
       'Custo da mercadoria <b>' + chaBRL(custo) + '</b>',
-      'Dízimo (10% da margem) <b>' + chaBRL(dizimo) + '</b>'
+      'Dízimo (10% da margem) <b>' + chaBRL(dizimo) + '</b>',
+      'Alimentação <b>' + chaBRL(alimentacao) + '</b>',
+      'Transporte <b>' + chaBRL(transporte) + '</b>'
     ]).map(function (l) { return '<div class="linha">' + l + '</div>'; }).join('');
     var lucroCls = lucro >= 0 ? 'lucro-positivo' : 'lucro-negativo';
     var liquidoCls = liquido >= 0 ? 'lucro-positivo' : 'lucro-negativo';
@@ -1019,6 +1046,8 @@
     if (c.receitaFis > 0) itens.push({ tipo: 'entrada', descricao: 'Venda de chaveiros (arrecadação' + quem + ')', categoria: 'Vendas', conta: 'Físico', valor: c.receitaFis });
     if (c.custo > 0) itens.push({ tipo: 'saida', descricao: 'Custo chaveiros (mercadoria)', categoria: 'Custos', conta: 'Físico', valor: c.custo });
     if (c.dizimo > 0) itens.push({ tipo: 'saida', descricao: 'Dízimo (venda de chaveiros)', categoria: 'Dízimo', conta: 'Físico', valor: c.dizimo });
+    if (c.alimentacao > 0) itens.push({ tipo: 'saida', descricao: 'Alimentação (venda de chaveiros)', categoria: 'Alimentação', conta: 'Físico', valor: c.alimentacao });
+    if (c.transporte > 0) itens.push({ tipo: 'saida', descricao: 'Transporte (venda de chaveiros)', categoria: 'Transporte', conta: 'Físico', valor: c.transporte });
     if (!itens.length) { toast('Nada a lançar.'); return; }
     $('cha-lancar').disabled = true;
     syncStatus(true, 'lançando…');
@@ -1037,7 +1066,7 @@
       $('cha-lancar').hidden = true;
       $('cha-resumo').hidden = true;
       ['cha-nome','cha-levou-3d','cha-levou-2d','cha-levou-ab','cha-voltou-3d','cha-voltou-2d','cha-voltou-ab',
-       'cha-pix','cha-fisico'].forEach(function (id) { $(id).value = ''; });
+       'cha-pix','cha-fisico','cha-alimentacao','cha-transporte'].forEach(function (id) { $(id).value = ''; });
       state.chaveiros = null;
       visualizar('fin');
     }).catch(function (e) {
