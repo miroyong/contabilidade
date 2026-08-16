@@ -4,14 +4,14 @@
  * dados velhos. Ao instalar/fazer update, pré-grava os assets atuais.
  * Suba VER a cada deploy para forçar refresh do shell.
  */
-const VER = 'contabilidade-v19';
+const VER = 'contabilidade-v20';
 const CACHE = VER;
 const PRECACHE = [
   './',
   './index.html',
-  './style.css?v=19',
-  './config.js?v=19',
-  './app.js?v=19',
+  './style.css?v=20',
+  './config.js?v=20',
+  './app.js?v=20',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png'

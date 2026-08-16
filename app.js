@@ -895,25 +895,34 @@
     copiarClip(payload, function () {
       toast((alvo === 'dizimo' ? 'Código Pix do dízimo' : 'Código Pix do custo') + ' copiado!');
     });
-    // tenta abrir o PagBank (App Link via click com user gesture).
-    // NÃO usar location.href: não dispara o handoff pro app no Android.
+    // tenta abrir o PagBank. NÃO usar um <a> para host externo (em PWA/TWA ele
+    // navega a própria página em vez de fazer handoff). Usa a URI intent://
+    // padrão do Android pinhando o PACOTE exato + fallback, sem depender de
+    // autoVerify de App Link. O link https serve de fallback e para o Chrome.
     if (cfg.abrirApp !== false) {
       abrirPagBankApp();
     }
   }
-  // Abre o app PagBank via Android App Link (host verificado no assetlinks.json
-  // -> br.com.uol.ps.myaccount). Um <a>.click() real conta como gesto do usuário,
-  // o que torna o handoff pro app muito mais confiável que location.href.
+  // Abre o app PagBank. Estratégia em camadas:
+  //  1) intent:// com package=br.com.uol.ps.myaccount (método padrão do Android,
+  //     pinha o app e abre independente de App Link/autoVerify).
+  //  2) fallback: navega para o link de conta Pix (se o intent não resolver).
+  // Se nada abrir, o código Pix JÁ foi copiado antes -> colagem manual funciona.
   function abrirPagBankApp() {
+    var urlI =
+      'intent://pagbank.com.br/conta-digital/pix#Intent;' +
+      'scheme=https;package=br.com.uol.ps.myaccount;' +
+      'S.browser_fallback_url=https%3A%2F%2Fwww.pagbank.com.br%2Fpix%2F;end';
+    try { window.location.href = urlI; return; } catch (e) { /* tenta web */ }
     try {
       var a = document.createElement('a');
-      a.href = 'https://pagbank.com.br/conta-digital/pix';
+      a.href = 'https://www.pagbank.com.br/pix/';
       a.rel = 'noopener';
       a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-    } catch (e) { /* código já foi copiado: a colagem manual ainda funciona */ }
+    } catch (e2) { /* código já copiado: colagem manual */ }
   }
   function copiarClip(texto, cb) {
     function fallback() {
