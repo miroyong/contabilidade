@@ -130,6 +130,26 @@ setTimeout(() => {
   // tema: claro por padrão no mock
   assert.strictEqual(global.document.documentElement.dataset.tema, 'claro', 'tema claro default');
 
-  console.log('✔ SMOKE TEST DO FRONT-END PASSOU (inclui dashboard e tema)');
+  // ===== verificação estática do código (mudanças deste turno) =====
+  // (1) insights ignoram lançamentos com categoria "acumulado"
+  assert.ok(appJs.includes("l.categoria.toLowerCase() !== 'acumulado'"),
+    'insights filtra categoria "acumulado" (case-insensitive)');
+  assert.ok(/saidasInsight\.forEach/.test(appJs) && /var maior = saidasInsight\.slice/.test(appJs),
+    'porCat e Maior saída usam saidasInsight (ignoram acumulado)');
+  // (2) mecânica Pix (enviar/salvar/copiar) removida — sem geradores de BR code
+  ['abrirPagBankApp', 'salvarConfigPix', 'abrirConfigPix', 'carregarConfigPix',
+    'copiarClip', 'chavePixValida', 'pixCopiar', 'pixCRC16', 'pixEMV'].forEach((fn) => {
+    assert.ok(!appJs.includes('function ' + fn), `mecânica Pix removida: function ${fn}`);
+  });
+  assert.ok(!/function pixStr\(/.test(appJs) && !appJs.includes('pixconfig'),
+    'sem gerador de BR code (pixStr) nem cache pixconfig');
+  // (3) forma de pagamento / campos Pix MANTIDOS
+  assert.ok(appJs.includes("conta: 'Pix'"), 'lançamento mantém conta/forma de pagamento Pix');
+  assert.ok(appJs.includes("porConta['Pix']"), 'dashboard mantém saldo por conta Pix');
+  // (4) visualizar() (troca de aba) preservada após remoção do bloco Pix
+  assert.ok(/function visualizar\(viz\)/.test(appJs) && appJs.includes("visualizar('fin')"),
+    'visualizar() preservada e chamada no boot');
+
+  console.log('✔ SMOKE TEST DO FRONT-END PASSOU (inclui dashboard, tema e estático)');
   process.exit(0);
 }, 300);
