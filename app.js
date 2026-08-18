@@ -365,10 +365,10 @@
 
     box.innerHTML = todos.map(function (l) {
       var tipo = l._tipo;
-      var marcado = (tipo === 'saida' && l.descricao.indexOf('✓') === 0);
+      var marcado = (tipo === 'saida' && temTogglePago(l) && l.descricao.indexOf('✓') === 0);
       var acoes = '<button class="btn-icone" data-edit="' + tipo + ':' + l.linha + '" title="Editar">✏️</button>' +
         '<button class="btn-icone" data-del="' + tipo + ':' + l.linha + '" title="Excluir">🗑️</button>';
-      if (tipo === 'saida') {
+      if (temTogglePago(l)) {
         acoes = '<button class="btn-icone lanc-pago ' + (marcado ? 'marcado' : '') + '" data-pago="' + l.linha +
           '" title="' + (marcado ? 'Pago/enviado ✓ (toque para desmarcar)' : 'Marcar como pago/enviado') + '">' +
           (marcado ? '✓' : '○') + '</button>' + acoes;
@@ -638,9 +638,13 @@
   }
 
   // Marca "✓" no lançamento: guarda como prefixo na descrição (sem mexer no
-  // backend/planilha — só o texto). Toggle pós-lançamento de despesa que já foi
-  // paga/enviada (Dízimo, custo material, qualquer saída).
+  // backend/planilha — só o texto). Só despesas de Dízimo/Custos têm o toggle.
   var MARCA = '✓ ';
+  function temTogglePago(l) {
+    if (!l || l.tipo === 'entrada' || l._tipo === 'entrada') return false;
+    var c = String(l.categoria || '').toLowerCase();
+    return c === 'dízimo' || c === 'custos';
+  }
   function stripMarca(d) {
     return (d != null && d.indexOf(MARCA) === 0) ? d.slice(MARCA.length) : d;
   }
@@ -648,7 +652,7 @@
   function marcarPago(tipo, linha) {
     if (tipo !== 'saida') return;
     var item = state.saidas.filter(function (l) { return l.linha === linha; })[0];
-    if (!item) return;
+    if (!item || !temTogglePago(item)) return;
     var novoDesc = item.descricao.indexOf(MARCA) === 0 ? stripMarca(item.descricao) : (MARCA + stripMarca(item.descricao));
     var dados = {
       tipo: tipo,

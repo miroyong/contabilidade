@@ -60,7 +60,7 @@ const LANCAMENTOS = {
     { linha: 9, data: '2026-08-15', descricao: 'Freela', categoria: 'Serviços', conta: 'Físico', valor: 300 }
   ],
   saidas: [
-    { linha: 7, data: '2026-08-02', descricao: 'Supermercado', categoria: 'Alimentação', conta: 'Pix', valor: 500 },
+    { linha: 7, data: '2026-08-02', descricao: 'Dízimo (venda de chaveiros)', categoria: 'Dízimo', conta: 'Pix', valor: 500 },
     { linha: 8, data: '2026-08-10', descricao: 'Aluguel', categoria: 'Moradia', conta: 'Físico', valor: 1200 }
   ],
   totais: { entradas: 2800, saidas: 1700, balanco: 1100 }
@@ -116,7 +116,7 @@ setTimeout(() => {
   assert.ok(graficoHtml.includes('Moradia') && graficoHtml.includes('R$ 1.200,00'), 'gráfico por categoria');
 
   const listaHtml = norm(els['lista'].innerHTML);
-  assert.ok(listaHtml.includes('Supermercado') && listaHtml.includes('Salário'), 'lista de lançamentos');
+  assert.ok(listaHtml.includes('Dízimo (venda de chaveiros)') && listaHtml.includes('Aluguel') && listaHtml.includes('Salário'), 'lista de lançamentos');
   assert.ok(listaHtml.includes('data-edit') && listaHtml.includes('data-del'), 'ações editar/excluir');
   assert.strictEqual(els['contador'].textContent, '4', 'contador de lançamentos');
 
@@ -150,14 +150,17 @@ setTimeout(() => {
   assert.ok(/function visualizar\(viz\)/.test(appJs) && appJs.includes("visualizar('fin')"),
     'visualizar() preservada e chamada no boot');
 
-  // ===== verificação do toggle "pago/enviado ✓" (despesas) =====
-  // render: saída tem botão [data-pago]; entrada NÃO tem
-  assert.ok(listaHtml.includes('data-pago'), 'saída renderiza toggle pago/enviado');
-  assert.ok(!/data-edit="entrada:[0-9-]+"[^>]*>.+?data-pago/.test(listaHtml) ||
-    !listaHtml.includes('data-pago') === false, 'entradas não têm toggle');
+  // ===== verificação do toggle "pago/enviado ✓" (só despesas Dízimo/Custos) =====
+  const linhaDizimo = listaHtml.slice(listaHtml.indexOf('Dízimo (venda de chaveiros)'), listaHtml.indexOf('Dízimo (venda de chaveiros)') + 300);
+  const linhaAluguel = listaHtml.slice(listaHtml.indexOf('Aluguel'), listaHtml.indexOf('Aluguel') + 300);
+  assert.ok(linhaDizimo.includes('data-pago'), 'despesa Dízimo tem toggle pago/enviado');
+  assert.ok(!linhaAluguel.includes('data-pago'), 'gasto comum (Moradia) NÃO tem toggle');
+  // entrada não tem toggle
+  assert.ok(listaHtml.split('data-pago').length <= 2, 'apenas a saída Dízimo/Custos tem [data-pago]');
   // helpers da marca existem no código
   assert.ok(appJs.includes("var MARCA = '✓ '") && appJs.includes('function stripMarca') &&
-    appJs.includes('function marcarPago'), 'helpers da marca (MARCA/stripMarca/marcarPago) presentes');
+    appJs.includes('function marcarPago') && appJs.includes('function temTogglePago'),
+    'helpers da marca (MARCA/stripMarca/marcarPago/temTogglePago) presentes');
 
   console.log('✔ SMOKE TEST DO FRONT-END PASSOU (inclui dashboard, tema e estático)');
   process.exit(0);
