@@ -882,6 +882,23 @@
     return parseValor($(id).value) || 0;
   }
 
+  // ---- "quanto levei": persiste localmente (não redigitar ao voltar) ----
+  var CHA_LEVOU_KEY = 'chaLevou';
+  function chaSalvarLevou() {
+    cacheSet(CHA_LEVOU_KEY, {
+      '3d': chaQtd('cha-levou-3d'),
+      '2d': chaQtd('cha-levou-2d'),
+      'ab': chaQtd('cha-levou-ab')
+    });
+  }
+  function chaRestaurarLevou() {
+    var s = cacheGet(CHA_LEVOU_KEY);
+    if (!s) return;
+    if (typeof s['3d'] === 'number') $('cha-levou-3d').value = s['3d'] || '';
+    if (typeof s['2d'] === 'number') $('cha-levou-2d').value = s['2d'] || '';
+    if (typeof s['ab'] === 'number') $('cha-levou-ab').value = s['ab'] || '';
+  }
+
   function visualizar(viz) {
     document.querySelectorAll('#viz .viz-btn').forEach(function (b) {
       b.classList.toggle('ativo', b.dataset.viz === viz);
@@ -977,6 +994,10 @@
   });
   $('cha-calcular').addEventListener('click', chaCalcular);
   $('cha-lancar').addEventListener('click', chaLancar);
+  ['cha-levou-3d', 'cha-levou-2d', 'cha-levou-ab'].forEach(function (id) {
+    $(id).addEventListener('input', chaSalvarLevou);
+  });
+  chaRestaurarLevou(); // preenche "Levou" com o que ficou salvo (não redigitar na volta)
   visualizar('fin');
 
   // ------------------------------------------------------------ start

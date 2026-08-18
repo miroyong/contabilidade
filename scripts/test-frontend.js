@@ -81,6 +81,8 @@ global.fetch = (url, opts) => {
 // ---------- carrega e executa o app ----------
 global.window.APP_CONFIG = global.window.APP_CONFIG;
 const appJs = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+// pré-carga: "levou" já salvo em localStorage (estoque do mosquetão do dia anterior)
+memStore['cf_chaLevou'] = JSON.stringify({ '3d': 30, '2d': 20, 'ab': 5 });
 eval(appJs);
 
 // ---------- verifica o resultado ----------
@@ -161,6 +163,15 @@ setTimeout(() => {
   assert.ok(appJs.includes("var MARCA = '✓ '") && appJs.includes('function stripMarca') &&
     appJs.includes('function marcarPago') && appJs.includes('function temTogglePago'),
     'helpers da marca (MARCA/stripMarca/marcarPago/temTogglePago) presentes');
+
+  // ===== "quanto levei": persistência local dos campos de Levou =====
+  // boot restaurou os campos a partir do localStorage pré-carregado (30/20/5)
+  assert.strictEqual(Number(els['cha-levou-3d'].value), 30, 'Cha 3D: Levou restaurado (30)');
+  assert.strictEqual(Number(els['cha-levou-2d'].value), 20, 'Cha 2D: Levou restaurado (20)');
+  assert.strictEqual(Number(els['cha-levou-ab'].value), 5, 'Abridor: Levou restaurado (5)');
+  // funções de persistência presentes no código
+  assert.ok(appJs.includes("CHA_LEVOU_KEY = 'chaLevou'") && appJs.includes('function chaSalvarLevou') &&
+    appJs.includes('function chaRestaurarLevou'), 'persistência do Levou (chaSalvarLevou/chaRestaurarLevou)');
 
   console.log('✔ SMOKE TEST DO FRONT-END PASSOU (inclui dashboard, tema e estático)');
   process.exit(0);
