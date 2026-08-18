@@ -919,6 +919,8 @@
     var custo = vendas['3d'] * CHA_CUSTOS['3d'] + vendas['2d'] * CHA_CUSTOS['2d'] + vendas['ab'] * CHA_CUSTOS['ab'];
     var receitaPix = chaVal('cha-pix');
     var receitaFis = chaVal('cha-fisico');
+    var alimentacao = chaVal('cha-alimentacao');
+    var transporte = chaVal('cha-transporte');
     var receita = receitaPix + receitaFis;
     // dízimo = 10% do que sobra APÓS descontar o custo da mercadoria
     // (ex.: 3D de R$20 com custo R$5 -> 10% de R$15 = R$1,50). Nunca negativo.
@@ -928,16 +930,18 @@
       toast('Informe o total do dia e/ou as quantidades.');
       return;
     }
-    state.chaveiros = { nome: nome, vendas: vendas, custo: custo, receita: receita, receitaPix: receitaPix, receitaFis: receitaFis, dizimo: dizimo };
+    state.chaveiros = { nome: nome, vendas: vendas, custo: custo, receita: receita, receitaPix: receitaPix, receitaFis: receitaFis, dizimo: dizimo, alimentacao: alimentacao, transporte: transporte };
     var lucro = receita - custo;                                        // bruto (antes do dízimo)
-    var liquido = Math.max(0, lucro - dizimo); // o que sobra após dízimo
+    var liquido = Math.max(0, lucro - dizimo - alimentacao - transporte); // o que sobra após dízimo + alimentação + transporte
     var linhas = [];
     if (nome) linhas.push('Quem arrecadou: <b>' + nome + '</b>');
     linhas = linhas.concat([
       'Vendidos: 3D <b>' + vendas['3d'] + '</b> · 2D <b>' + vendas['2d'] + '</b> · Abridor <b>' + vendas['ab'] + '</b>',
       'Total do dia <b>' + chaBRL(receita) + '</b> (Pix ' + chaBRL(receitaPix) + ' · Físico ' + chaBRL(receitaFis) + ')',
       'Custo da mercadoria <b>' + chaBRL(custo) + '</b>',
-      'Dízimo (10% da margem) <b>' + chaBRL(dizimo) + '</b>'
+      'Dízimo (10% da margem) <b>' + chaBRL(dizimo) + '</b>',
+      'Alimentação <b>' + chaBRL(alimentacao) + '</b>',
+      'Transporte <b>' + chaBRL(transporte) + '</b>'
     ]).map(function (l) { return '<div class="linha">' + l + '</div>'; }).join('');
     var lucroCls = lucro >= 0 ? 'lucro-positivo' : 'lucro-negativo';
     var liquidoCls = liquido >= 0 ? 'lucro-positivo' : 'lucro-negativo';
@@ -959,6 +963,8 @@
     if (c.receitaFis > 0) itens.push({ tipo: 'entrada', descricao: 'Venda de chaveiros (arrecadação' + quem + ')', categoria: 'Vendas', conta: 'Físico', valor: c.receitaFis });
     if (c.custo > 0) itens.push({ tipo: 'saida', descricao: 'Custo chaveiros (mercadoria)', categoria: 'Custos', conta: 'Físico', valor: c.custo });
     if (c.dizimo > 0) itens.push({ tipo: 'saida', descricao: 'Dízimo (venda de chaveiros)', categoria: 'Dízimo', conta: 'Físico', valor: c.dizimo });
+    if (c.alimentacao > 0) itens.push({ tipo: 'saida', descricao: 'Alimentação (venda de chaveiros)', categoria: 'Alimentação', conta: 'Físico', valor: c.alimentacao });
+    if (c.transporte > 0) itens.push({ tipo: 'saida', descricao: 'Transporte (venda de chaveiros)', categoria: 'Transporte', conta: 'Físico', valor: c.transporte });
     if (!itens.length) { toast('Nada a lançar.'); return; }
     $('cha-lancar').disabled = true;
     syncStatus(true, 'lançando…');
@@ -977,7 +983,7 @@
       $('cha-lancar').hidden = true;
       $('cha-resumo').hidden = true;
       ['cha-nome','cha-levou-3d','cha-levou-2d','cha-levou-ab','cha-voltou-3d','cha-voltou-2d','cha-voltou-ab',
-       'cha-pix','cha-fisico'].forEach(function (id) { $(id).value = ''; });
+       'cha-pix','cha-fisico','cha-alimentacao','cha-transporte'].forEach(function (id) { $(id).value = ''; });
       state.chaveiros = null;
       visualizar('fin');
     }).catch(function (e) {

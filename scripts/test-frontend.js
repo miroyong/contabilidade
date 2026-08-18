@@ -13,7 +13,8 @@ function makeEl(id) {
     id, hidden: false, innerHTML: '', value: '', className: '',
     dataset: {}, style: {}, open: false, _timer: null, _tc: '',
     classList: { add() {}, remove() {}, toggle() {} },
-    addEventListener() {}, focus() {}, showModal() { this.open = true; }, close() { this.open = false; },
+    _cb: {},
+    addEventListener(ev, cb) { this._cb[ev] = cb; }, focus() {}, showModal() { this.open = true; }, close() { this.open = false; },
     querySelectorAll() { return []; }, querySelector() { return null; }
   };
   // textContent do DOM real converte qualquer valor para string
@@ -172,6 +173,33 @@ setTimeout(() => {
   // funções de persistência presentes no código
   assert.ok(appJs.includes("CHA_LEVOU_KEY = 'chaLevou'") && appJs.includes('function chaSalvarLevou') &&
     appJs.includes('function chaRestaurarLevou'), 'persistência do Levou (chaSalvarLevou/chaRestaurarLevou)');
+
+  // ===== "arrecadação": Alimentação e Transporte re-incluídos (revert f8947a8) =====
+  // (a) campos/estado + lançamentos de saída presentes no código
+  assert.ok(appJs.includes("var alimentacao = chaVal('cha-alimentacao')") &&
+    appJs.includes("var transporte = chaVal('cha-transporte')"), 'lê campos alimentação/transporte');
+  assert.ok(appJs.includes("alimentacao: alimentacao, transporte: transporte"), 'state.chaveiros guarda alim/transp');
+  assert.ok(appJs.includes("categoria: 'Alimentação'") && appJs.includes("categoria: 'Transporte'") &&
+    appJs.includes("'Alimentação (venda de chaveiros)'") && appJs.includes("'Transporte (venda de chaveiros)'"),
+    'lança saídas Alimentação/Transporte no chaLancar');
+  assert.ok(appJs.includes("'cha-pix','cha-fisico','cha-alimentacao','cha-transporte'"),
+    'limpeza pós-lançamento inclui alim/transp');
+  // (b) funcional: lucro líquido desconta dízimo + alimentação + transporte
+  byId('cha-nome').value = 'Joana';
+  byId('cha-levou-3d').value = 30; byId('cha-levou-2d').value = 0; byId('cha-levou-ab').value = 0;
+  byId('cha-voltou-3d').value = 4; byId('cha-voltou-2d').value = 0; byId('cha-voltou-ab').value = 0;
+  byId('cha-pix').value = '320,00'; byId('cha-fisico').value = '200,00';
+  byId('cha-alimentacao').value = '50,00'; byId('cha-transporte').value = '20,00';
+  byId('cha-calcular')._cb['click']();
+  const resumoCha = norm(byId('cha-resumo').innerHTML);
+  // 26 vendidos * custo 5 = 130; receita 520; lucro bruto = 390; dízimo = 10% de 390 = 39;
+  // líquido = 390 - 39 - 50 - 20 = 281
+  assert.ok(/Alimentação/.test(resumoCha), 'resumo chaveiros mostra Alimentação');
+  assert.ok(/Transporte/.test(resumoCha), 'resumo chaveiros mostra Transporte');
+  const lucroB = (resumoCha.match(/LUCRO BRUTO[^0-9]*([\d.,]+)/) || [])[1];
+  const lique = (resumoCha.match(/LÍQUIDO[^0-9]*([\d.,]+)/) || [])[1];
+  assert.strictEqual(lucroB, '390,00', 'lucro bruto 390 (520-130)');
+  assert.strictEqual(lique, '281,00', 'líquido 281 (390-dízimo39-alim50-transp20)');
 
   console.log('✔ SMOKE TEST DO FRONT-END PASSOU (inclui dashboard, tema e estático)');
   process.exit(0);
