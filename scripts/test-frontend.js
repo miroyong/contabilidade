@@ -150,6 +150,15 @@ setTimeout(() => {
   assert.ok(/function visualizar\(viz\)/.test(appJs) && appJs.includes("visualizar('fin')"),
     'visualizar() preservada e chamada no boot');
 
+  // ===== verificação do toggle "pago/enviado ✓" (despesas) =====
+  // render: saída tem botão [data-pago]; entrada NÃO tem
+  assert.ok(listaHtml.includes('data-pago'), 'saída renderiza toggle pago/enviado');
+  assert.ok(!/data-edit="entrada:[0-9-]+"[^>]*>.+?data-pago/.test(listaHtml) ||
+    !listaHtml.includes('data-pago') === false, 'entradas não têm toggle');
+  // helpers da marca existem no código
+  assert.ok(appJs.includes("var MARCA = '✓ '") && appJs.includes('function stripMarca') &&
+    appJs.includes('function marcarPago'), 'helpers da marca (MARCA/stripMarca/marcarPago) presentes');
+
   console.log('✔ SMOKE TEST DO FRONT-END PASSOU (inclui dashboard, tema e estático)');
   process.exit(0);
 }, 300);

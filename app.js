@@ -365,15 +365,20 @@
 
     box.innerHTML = todos.map(function (l) {
       var tipo = l._tipo;
+      var marcado = (tipo === 'saida' && l.descricao.indexOf('✓') === 0);
+      var acoes = '<button class="btn-icone" data-edit="' + tipo + ':' + l.linha + '" title="Editar">✏️</button>' +
+        '<button class="btn-icone" data-del="' + tipo + ':' + l.linha + '" title="Excluir">🗑️</button>';
+      if (tipo === 'saida') {
+        acoes = '<button class="btn-icone lanc-pago ' + (marcado ? 'marcado' : '') + '" data-pago="' + l.linha +
+          '" title="' + (marcado ? 'Pago/enviado ✓ (toque para desmarcar)' : 'Marcar como pago/enviado') + '">' +
+          (marcado ? '✓' : '○') + '</button>' + acoes;
+      }
       return '<div class="lanc">' +
         '<div class="lanc-data">' + fmtDataBR(l.data) + '</div>' +
-        '<div class="lanc-desc">' + esc(l.descricao) + '</div>' +
+        '<div class="lanc-desc">' + (marcado ? '<span class="marcado-rot">✓</span> ' : '') + esc(stripMarca(l.descricao)) + '</div>' +
         '<div class="lanc-valor ' + tipo + '">' + (tipo === 'entrada' ? '+' : '−') + ' ' +
           fmtBRL.format(l.valor) + '</div>' +
-        '<div class="lanc-acoes">' +
-          '<button class="btn-icone" data-edit="' + tipo + ':' + l.linha + '" title="Editar">✏️</button>' +
-          '<button class="btn-icone" data-del="' + tipo + ':' + l.linha + '" title="Excluir">🗑️</button>' +
-        '</div>' +
+        '<div class="lanc-acoes">' + acoes + '</div>' +
         '<div class="lanc-det">' + esc(l.categoria || '—') + ' · ' + esc(l.conta || '—') + '</div>' +
       '</div>';
     }).join('');
@@ -388,6 +393,12 @@
       b.addEventListener('click', function () {
         var p = b.dataset.del.split(':');
         excluir(p[0], Number(p[1]));
+      });
+    });
+    Array.prototype.forEach.call(box.querySelectorAll('[data-pago]'), function (b) {
+      b.addEventListener('click', function () {
+        var linha = Number(b.dataset.pago);
+        marcarPago('saida', linha);
       });
     });
   }
@@ -531,6 +542,16 @@
     var tipo = dados.tipo;
     var mudouTipo = eraEdicao && editando.tipo !== tipo;
 
+    // preserva a marca "✓" (pago/enviado) ao editor uma despesa já marcada:
+    // a caixa de edição mostra sem o prefixo, mas ao salvar mantemos a marca
+    // (a menos que o usuário tenha digitado manualmente uma nova começando com ✓).
+    if (eraEdicao && tipo === 'saida' && editando.tipo === 'saida') {
+      var antes = state.saidas.filter(function (l) { return l.linha === editando.linha; })[0];
+      if (antes && antes.descricao.indexOf(MARCA) === 0 && dados.descricao.indexOf(MARCA) !== 0) {
+        dados.descricao = MARCA + dados.descricao;
+      }
+    }
+
     var item = {
       // em edição SEM mudar tipo mantém a linha real; mudando tipo usa linha
       // provisória (o item é remoção no tipo antigo + adição no novo);
@@ -613,6 +634,42 @@
       state.salvando = false;
       toast('Erro ao salvar: ' + e.message);
       recarregarMes(); // desfaz o otimista: o cache volta a refletir o servidor
+    });
+  }
+
+  // Marca "✓" no lançamento: guarda como prefixo na descrição (sem mexer no
+  // backend/planilha — só o texto). Toggle pós-lançamento de despesa que já foi
+  // paga/enviada (Dízimo, custo material, qualquer saída).
+  var MARCA = '✓ ';
+  function stripMarca(d) {
+    return (d != null && d.indexOf(MARCA) === 0) ? d.slice(MARCA.length) : d;
+  }
+
+  function marcarPago(tipo, linha) {
+    if (tipo !== 'saida') return;
+    var item = state.saidas.filter(function (l) { return l.linha === linha; })[0];
+    if (!item) return;
+    var novoDesc = item.descricao.indexOf(MARCA) === 0 ? stripMarca(item.descricao) : (MARCA + stripMarca(item.descricao));
+    var dados = {
+      tipo: tipo,
+      data: item.data,
+      descricao: novoDesc,
+      categoria: item.categoria,
+      conta: item.conta,
+      valor: item.valor
+    };
+    syncStatus(true, 'salvando…');
+    chamar('atualizar', Object.assign({ mes: state.mes, tipo: tipo, linha: linha }, dados)).then(function (r) {
+      syncStatus(false);
+      if (!r.ok) { toast('Erro ao marcar: ' + (r.erro || 'erro')); recarregarMes(); return; }
+      item.descricao = novoDesc;
+      salvarCacheMes();
+      renderLista();
+      toast(novoDesc.indexOf(MARCA) === 0 ? 'Marcado como pago/enviado ✓' : 'Marcação removida');
+    }).catch(function (e) {
+      syncStatus(false);
+      toast('Erro ao marcar: ' + e.message);
+      recarregarMes();
     });
   }
 
@@ -710,7 +767,7 @@
       var item = lista.filter(function (l) { return l.linha === linha; })[0];
       if (!item) return;
       $('f-data').value = item.data;
-      $('f-descricao').value = item.descricao;
+      $('f-descricao').value = stripMarca(item.descricao);
       $('f-categoria').value = item.categoria;
       $('f-conta').value = item.conta;
       $('f-valor').value = fmtBRL.format(item.valor).replace('R$', '').trim();

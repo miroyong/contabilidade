@@ -228,6 +228,10 @@ main {
   font-size: 1rem; padding: 4px 6px; border-radius: 8px;
 }
 .btn-icone:hover { background: var(--fundo); }
+.lanc-pago { min-width: 26px; text-align: center; }
+.lanc-pago.marcado { background: var(--verde, #17a34a); color: #fff; border-radius: 8px; }
+.lanc-pago:not(.marcado) { color: var(--texto-suave); }
+.marcado-rot { color: var(--verde, #17a34a); font-weight: 800; }
 
 /* ---------- modal ---------- */
 dialog {
