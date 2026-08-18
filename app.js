@@ -426,7 +426,12 @@
     var box = $('insights');
     var html = [];
     var porCat = {};
-    state.saidas.forEach(function (l) {
+    var saidasInsight = state.saidas.filter(function (l) {
+      // insights ignoram lançamentos de liquidação/acumulado (ex.: ajuste de
+      // saldo), para não distorcer categoria top / maior saída
+      return !l.categoria || l.categoria.toLowerCase() !== 'acumulado';
+    });
+    saidasInsight.forEach(function (l) {
       var c = l.categoria || 'Sem categoria';
       porCat[c] = (porCat[c] || 0) + l.valor;
     });
@@ -434,7 +439,7 @@
     Object.keys(porCat).forEach(function (c) {
       if (!topCat || porCat[c] > topCat.valor) topCat = { nome: c, valor: porCat[c] };
     });
-    var maior = state.saidas.slice().sort(function (a, b) { return b.valor - a.valor; })[0];
+    var maior = saidasInsight.slice().sort(function (a, b) { return b.valor - a.valor; })[0];
 
     if (topCat && topCat.valor > 0) {
       html.push('<div class="insight">🎯 Categoria top: <b>' + esc(topCat.nome) + '</b> — ' +
@@ -816,55 +821,6 @@
     return parseValor($(id).value) || 0;
   }
 
-  // ---------------------- Pix: BR Code (payload copia-e-cola) ----------------------
-  // Monta o payload est%C3%A1tico/din%C3%A2mico Pix conforme a norma do BACEN.
-  // A chave %C3%A9 o CNPJ (campo 26). Nome (59) e cidade (60) s%C3%A3o obrigat%C3%B3rios.
-  function pixCRC16(str) {
-    // CRC-16/CCITT-FALSE (polin%C3%B4mio 0x1021, init 0xFFFF) - usada pelo Pix
-    var crc = 0xFFFF;
-    for (var i = 0; i < str.length; i++) {
-      crc ^= str.charCodeAt(i) << 8;
-      for (var j = 0; j < 8; j++) {
-        crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) : (crc << 1);
-        crc &= 0xFFFF;
-      }
-    }
-    return crc.toString(16).toUpperCase().padStart(4, '0');
-  }
-  function pixEMV(id, valor) {
-    // helper: id de 2 d%C3%ADgitos + valor (inteiro, em centavos quando num%C3%A9rico)
-    var v = String(valor);
-    return String(id).padStart(2, '0') + v.length.toString().padStart(2, '0') + v;
-  }
-  // Aceita chave Pix numérica de CPF (11) ou CNPJ (14) dígitos.
-  function chavePixValida(chave) {
-    var d = String(chave || '').replace(/\D/g, '');
-    return d.length === 11 || d.length === 14;
-  }
-  function pixStr(chavePix, nome, cidade, valorCentavos) {
-    // Monta o payload Pix (BR Code) com valor fixo em centavos.
-    var merchan = nome.slice(0, 25);
-    var cit = cidade.slice(0, 15);
-    var chave = String(chavePix).replace(/\D/g, '');
-    var gui46 = '0014br.gov.bcb.pix01' + (chave.length < 10 ? '0' : '') + chave.length + chave;
-    var p = '000201' + pixEMV('26', gui46);
-    p += '52040000';
-    p += '5303986';
-    if (valorCentavos > 0) {
-      // Campo 54 (valor): 2 casas decimais com ponto, sem separador de milhar
-      // (norma BACEN / EMVCo Transaction Amount). Ex.: 1000 centavos -> "10.00".
-      var valor = (valorCentavos / 100).toFixed(2);
-      p += pixEMV('54', valor);
-    }
-    p += '5802BR';
-    p += pixEMV('59', merchan);
-    p += pixEMV('60', cit);
-    p += pixEMV('62', '05' + '***');
-    p += '63040000';
-    var crc = pixCRC16(p);
-    p = p.slice(0, -4) + crc;
-    return p;
-  }
   function visualizar(viz) {
     document.querySelectorAll('#viz .viz-btn').forEach(function (b) {
       b.classList.toggle('ativo', b.dataset.viz === viz);
@@ -875,116 +831,7 @@
       else s.style.display = (viz === 'cha') ? 'none' : '';
     });
   }
-  // Copia o código Pix (payload BR Code) para o clipboard e tenta abrir o PagBank.
-  function pixCopiar() {
-    var cfg = cacheGet('pixconfig') || {};
-    if (!cfg || !chavePixValida(cfg.chave)) {
-      toast('Primeiro configure o CPF ou CNPJ da chave Pix (☰ Pix).');
-      abrirConfigPix(); return;
-    }
-    var c = state.chaveiros;
-    if (!c) return;
-    // valor = do botão que disparou (custo ou dízimo)
-    var bt = $('pix-btn-custo');
-    var alvo = this && this.dataset && this.dataset.tipo === 'dizimo' ? 'dizimo' : 'custo';
-    var centavos = 0;
-    if (alvo === 'dizimo') centavos = Math.round(c.dizimo * 100);
-    else centavos = Math.round(c.custo * 100);
-    if (centavos <= 0) { toast('Valor zerado: nada a cobrar.'); return; }
-    var payload = pixStr(cfg.chave, cfg.nome || 'Recebedor', cfg.cidade || 'BRASILIA', centavos);
-    copiarClip(payload, function () {
-      toast((alvo === 'dizimo' ? 'Código Pix do dízimo' : 'Código Pix do custo') + ' copiado!');
-    });
-    // tenta abrir o PagBank. NÃO usar um <a> para host externo (em PWA/TWA ele
-    // navega a própria página em vez de fazer handoff). Usa a URI intent://
-    // padrão do Android pinhando o PACOTE exato + fallback, sem depender de
-    // autoVerify de App Link. O link https serve de fallback e para o Chrome.
-    if (cfg.abrirApp !== false) {
-      abrirPagBankApp();
-    }
-  }
-  // Abre o app PagBank. Estratégia em camadas:
-  //  1) intent:// com package=br.com.uol.ps.myaccount (método padrão do Android,
-  //     pinha o app e abre independente de App Link/autoVerify).
-  //  2) fallback: navega para o link de conta Pix (se o intent não resolver).
-  // Se nada abrir, o código Pix JÁ foi copiado antes -> colagem manual funciona.
-  function abrirPagBankApp() {
-    var fallbackUrl = 'https://www.pagbank.com.br/pix/';
-    // URI intent:// padrão do Android. package= pinha o app PagBank
-    // (br.com.uol.ps.myaccount). Se o app não estiver instalado, o próprio
-    // mecanismo de intents redireciona para o browser_fallback_url.
-    var urlI =
-      'intent://pagbank.com.br/conta-digital/pix#Intent;' +
-      'scheme=https;package=br.com.uol.ps.myaccount;' +
-      'S.browser_fallback_url=' + encodeURIComponent(fallbackUrl) + ';end';
-    // IMPORTANTE: nada de window.location.href = intent://. O Chrome ignora
-    // location.href para scheme intent:// de forma SILENCIOSA (não lança
-    // exceção), então o return seguinte matava o fallback e o app nunca abria.
-    // O método que dispara o resolver de intents no Android é um <a>.click().
-    var a = document.createElement('a');
-    a.href = urlI;
-    a.style.display = 'none';
-    a.rel = 'noopener';
-    document.body.appendChild(a);
-    try { a.click(); } catch (e) { /* segue para o fallback */ }
-    // Descarta o <a> do intent logo após o clique.
-    setTimeout(function () { if (a.parentNode) a.parentNode.removeChild(a); }, 50);
-    // Fallback temporal para o navegador (Desktop) e caso o click/Intent não
-    // tenha resolvido: se a página continuou visível (nada abriu por cima),
-    // abre o link web de conta Pix em nova aba.
-    setTimeout(function () {
-      if (document.hidden === undefined || !document.hidden) {
-        try {
-          var w = document.createElement('a');
-          w.href = fallbackUrl;
-          w.target = '_blank';
-          w.rel = 'noopener';
-          w.style.display = 'none';
-          document.body.appendChild(w);
-          w.click();
-          document.body.removeChild(w);
-        } catch (e2) { /* código já copiado: colagem manual */ }
-      }
-    }, 700);
-  }
-  function copiarClip(texto, cb) {
-    function fallback() {
-      try {
-        var ta = document.createElement('textarea');
-        ta.value = texto; ta.style.position = 'fixed'; ta.style.opacity = '0';
-        document.body.appendChild(ta); ta.select();
-        var ok = document.execCommand('copy'); document.body.removeChild(ta);
-        if (cb) cb();
-      } catch (e) { }
-    }
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(texto).then(function () { if (cb) cb(); }, fallback);
-    } else fallback();
-  }
-  function abrirConfigPix() {
-    var f = $('pix-config');
-    if (f) f.hidden = !f.hidden;
-  }
-  function salvarConfigPix() {
-    var cfg = {
-      chave: ($('pix-chave') ? $('pix-chave').value : '').trim(),
-      nome: ($('pix-nome') ? $('pix-nome').value : '').trim() || 'Recebedor',
-      cidade: ($('pix-cidade') ? $('pix-cidade').value : '').trim() || 'BRASILIA',
-      abrirApp: $('pix-abrir') ? $('pix-abrir').checked : true
-    };
-    if (!chavePixValida(cfg.chave)) { toast('CPF (11) ou CNPJ (14) precisa de dígitos válidos.'); return; }
-    cacheSet('pixconfig', cfg);
-    toast('Configuração do Pix salva!');
-    if ($('pix-config')) $('pix-config').hidden = true;
-    if (state.chaveiros) chaCalcular();
-  }
-  function carregarConfigPix() {
-    var cfg = cacheGet('pixconfig') || {};
-    if ($('pix-chave')) $('pix-chave').value = cfg.chave || '';
-    if ($('pix-nome')) $('pix-nome').value = cfg.nome || '';
-    if ($('pix-cidade')) $('pix-cidade').value = cfg.cidade || '';
-    if ($('pix-abrir')) $('pix-abrir').checked = cfg.abrirApp !== false;
-  }
+
   function chaCalcular() {
     var vendas = {
       '3d': Math.max(0, chaQtd('cha-levou-3d') - chaQtd('cha-voltou-3d')),
@@ -1022,14 +869,6 @@
     $('cha-resumo').hidden = false;
     $('cha-lancar').hidden = false;
     $('cha-lancar').disabled = false;
-    // botões Pix: gera código copia-e-cola com o valor do custo ou do dízimo
-    var cfg = cacheGet('pixconfig') || {};
-    var btnC = $('pix-btn-custo'), btnD = $('pix-btn-dizimo');
-    if (btnC && btnD) {
-      var ok = cfg && chavePixValida(cfg.chave);
-      btnC.hidden = !ok; btnD.hidden = !ok;
-      if (ok) { btnC.dataset.centavos = Math.round(custo * 100); btnD.dataset.centavos = Math.round(dizimo * 100); }
-    }
   }
   function chaLancar() {
     var c = state.chaveiros;
@@ -1077,12 +916,6 @@
   });
   $('cha-calcular').addEventListener('click', chaCalcular);
   $('cha-lancar').addEventListener('click', chaLancar);
-  var __pixBtC = $('pix-btn-custo'), __pixBtD = $('pix-btn-dizimo');
-  if (__pixBtC) __pixBtC.addEventListener('click', function (e) { e.stopPropagation(); pixCopiar.call(__pixBtC); });
-  if (__pixBtD) __pixBtD.addEventListener('click', function (e) { e.stopPropagation(); pixCopiar.call(__pixBtD); });
-  if ($('pix-btn-config')) $('pix-btn-config').addEventListener('click', abrirConfigPix);
-  if ($('pix-salvar')) $('pix-salvar').addEventListener('click', salvarConfigPix);
-  carregarConfigPix();
   visualizar('fin');
 
   // ------------------------------------------------------------ start
