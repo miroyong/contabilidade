@@ -184,6 +184,13 @@ setTimeout(() => {
     'lança saídas Alimentação/Transporte no chaLancar');
   assert.ok(appJs.includes("'cha-pix','cha-fisico','cha-alimentacao','cha-transporte'"),
     'limpeza pós-lançamento inclui alim/transp');
+  // (a2) custo e dízimo já vêm pré-configurados como Pix (não Físico)
+  assert.ok(appJs.includes("categoria: 'Custos', conta: 'Pix'") &&
+    appJs.includes("categoria: 'Dízimo', conta: 'Pix'"),
+    'Custo e Dízimo lançam em conta Pix');
+  assert.ok(appJs.includes("categoria: 'Alimentação', conta: 'Físico'") &&
+    appJs.includes("categoria: 'Transporte', conta: 'Físico'"),
+    'Alimentação e Transporte permanecem em Físico');
   // (b) funcional: lucro líquido desconta dízimo + alimentação + transporte
   byId('cha-nome').value = 'Joana';
   byId('cha-levou-3d').value = 30; byId('cha-levou-2d').value = 0; byId('cha-levou-ab').value = 0;

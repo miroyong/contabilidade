@@ -961,8 +961,8 @@
     var itens = [];
     if (c.receitaPix > 0) itens.push({ tipo: 'entrada', descricao: 'Venda de chaveiros (arrecadação' + quem + ')', categoria: 'Vendas', conta: 'Pix', valor: c.receitaPix });
     if (c.receitaFis > 0) itens.push({ tipo: 'entrada', descricao: 'Venda de chaveiros (arrecadação' + quem + ')', categoria: 'Vendas', conta: 'Físico', valor: c.receitaFis });
-    if (c.custo > 0) itens.push({ tipo: 'saida', descricao: 'Custo chaveiros (mercadoria)', categoria: 'Custos', conta: 'Físico', valor: c.custo });
-    if (c.dizimo > 0) itens.push({ tipo: 'saida', descricao: 'Dízimo (venda de chaveiros)', categoria: 'Dízimo', conta: 'Físico', valor: c.dizimo });
+    if (c.custo > 0) itens.push({ tipo: 'saida', descricao: 'Custo chaveiros (mercadoria)', categoria: 'Custos', conta: 'Pix', valor: c.custo });
+    if (c.dizimo > 0) itens.push({ tipo: 'saida', descricao: 'Dízimo (venda de chaveiros)', categoria: 'Dízimo', conta: 'Pix', valor: c.dizimo });
     if (c.alimentacao > 0) itens.push({ tipo: 'saida', descricao: 'Alimentação (venda de chaveiros)', categoria: 'Alimentação', conta: 'Físico', valor: c.alimentacao });
     if (c.transporte > 0) itens.push({ tipo: 'saida', descricao: 'Transporte (venda de chaveiros)', categoria: 'Transporte', conta: 'Físico', valor: c.transporte });
     if (!itens.length) { toast('Nada a lançar.'); return; }
