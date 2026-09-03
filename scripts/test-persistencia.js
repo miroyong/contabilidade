@@ -56,7 +56,7 @@ function boot(failServer) {
     querySelector: (s) => { const el = makeEl(s); if (s === '.tipo-btn.ativo') el.dataset.tipo = 'saida'; return el; },
     documentElement: { dataset: {} }
   };
-  global.window = { APP_CONFIG: { APPS_SCRIPT_URL: 'https://mock/exec', APP_KEY: 'cf-2026-k3x9pQ7mZt' } };
+  global.window = { APP_CONFIG: { SUPABASE_URL: 'https://mock.supabase.co', SUPABASE_ANON_KEY: 'chave' } };
   global.window.matchMedia = () => ({ matches: false });
   const memStore = {};
   global.localStorage = {
@@ -70,14 +70,32 @@ function boot(failServer) {
   global.Intl = Intl;
 
   global.fetch = (url, opts) => {
-    const c = JSON.parse(opts.body);
-    let r;
-    if (c.action === 'meses') r = { ok: true, meses: ['Agosto'], mesAtual: 'Agosto' };
-    else if (c.action === 'opcoes') r = { ok: true, categorias: [], contas: ['Pix', 'Físico'] };
-    else if (c.action === 'lancamentos') r = { ok: true, existe: true, mes: 'Agosto', entradas: [], saidas: [], totais: {} };
-    else if (c.action === 'adicionar') r = failServer ? { ok: false, erro: 'A aba não existe.' } : { ok: true, linha: 7 };
-    else r = { ok: true };
-    return Promise.resolve({ json: () => Promise.resolve(r) });
+    const u = new URL(url);
+    const table = (u.pathname.match(/\/rest\/v1\/(\w+)/) || [])[1] || '';
+    const q = u.searchParams;
+    const method = (opts && opts.method) || 'GET';
+    const res = (payload, status = 200) => Promise.resolve({
+      ok: status >= 200 && status < 300, status,
+      text: () => Promise.resolve(payload == null ? '' : JSON.stringify(payload))
+    });
+    if (table === 'meses') {
+      return Promise.resolve(res(q.has('id') ? [{ id: 'Agosto' }] : [{ id: 'Agosto' }]));
+    }
+    if (table === 'lancamentos') {
+      if (q.get('select') === 'categoria,conta') {
+        return Promise.resolve(res([{ categoria: '', conta: 'Pix' }, { categoria: '', conta: 'Físico' }]));
+      }
+      if (method === 'POST') {
+        // cenário A (falha) vira erro HTTP 409 (FK mês inexistente); B aceita
+        return failServer
+          ? Promise.resolve(res({ message: 'A aba não existe.' }, 409))
+          : Promise.resolve(res([{ num: 7, tipo: 'saida', data: '2026-08-05', descricao: 'ITEM BUG',
+            categoria: 'Serviços', conta: 'Pix', valor: 100 }], 201));
+      }
+      if (method === 'DELETE' || method === 'PATCH') return Promise.resolve(res(null, 204));
+      return Promise.resolve(res([])); // mês sem lançamentos no início
+    }
+    return Promise.resolve(res([]));
   };
 
   const appJs = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');

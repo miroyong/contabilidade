@@ -1,14 +1,18 @@
 // ============================================================
-// CONFIGURAÇÃO DO CONTROLE FINANCEIRO
-// Preencha APPS_SCRIPT_URL depois de fazer o deploy do
-// Google Apps Script (veja README.md, seção "Passo 1").
-// A URL termina em /exec e fica em:
-//   Implantar → Gerenciar implantações → Aplicativo da web → URL
+// CONFIGURAÇÃO DO CONTROLE FINANCEIRO (backend Supabase)
+//
+// Preencha com os dados do seu projeto Supabase:
+//   Dashboard → Project Settings → API
+//   - SUPABASE_URL: Project URL (ex.: https://abcdefgh.supabase.co)
+//   - SUPABASE_ANON_KEY: anon public key
+//
+// Depois rode o schema uma vez:
+//   Dashboard → SQL Editor → cole supabase/schema.sql → Run
 // ============================================================
 window.APP_CONFIG = {
-  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbyAVntpjaF3tfUJ0Rw__8wP7Ry6-nCRvPjQmdd6nTu1fxIsRy9E2n7kqXlB2pcetUbX/exec",
+  // URL do projeto Supabase (sem barra no final)
+  SUPABASE_URL: "https://krdzqceedqanhiqmlijd.supabase.co",
 
-  // Mesma chave do APP_KEY no apps-script/Code.gs.
-  // Se trocar aqui, troque lá também.
-  APP_KEY: "cf-2026-k3x9pQ7mZt"
+  // Chave pública "anon" (é pública mesmo — a proteção real fica no RLS)
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtyZHpxY2VlZHFhbmhpcW1saWpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0MDE2NjAsImV4cCI6MjEwMzk3NzY2MH0.ar_66WVg7eH_61yX0FKOx6cocYUZCjQXfbtWT6nqcsY"
 };

@@ -37,7 +37,7 @@ function setup(fetchFn) {
     getElementById: byId, querySelectorAll: () => [], querySelector: (sel) => makeEl(sel),
     documentElement: { dataset: {} }
   };
-  global.window = { APP_CONFIG: { APPS_SCRIPT_URL: 'https://mock/exec', APP_KEY: 'k' } };
+  global.window = { APP_CONFIG: { SUPABASE_URL: 'https://mock.supabase.co', SUPABASE_ANON_KEY: 'chave' } };
   global.window.matchMedia = () => ({ matches: false });
   global.requestAnimationFrame = (fn) => fn();
   global.confirm = () => true;
@@ -51,22 +51,28 @@ function setup(fetchFn) {
   return els;
 }
 
-const LANCS = {
-  ok: true, existe: true, mes: 'Agosto',
-  entradas: [{ linha: 7, data: '2026-08-01', descricao: 'Salário', categoria: 'Salário', conta: 'Banco do Brasil', valor: 2500 }],
-  saidas: [{ linha: 7, data: '2026-08-02', descricao: 'Supermercado', categoria: 'Alimentação', conta: 'Cartão', valor: 500 }],
-  totais: { entradas: 2500, saidas: 500, balanco: 2000 }
-};
+const ROWS = [
+  { num: 7, tipo: 'entrada', data: '2026-08-01', descricao: 'Salário', categoria: 'Salário', conta: 'Banco do Brasil', valor: 2500 },
+  { num: 8, tipo: 'saida', data: '2026-08-02', descricao: 'Supermercado', categoria: 'Alimentação', conta: 'Cartão', valor: 500 }
+];
 
 // ---------- 1º load: servidor responde (cache fica quente) ----------
 let fetchCount = 0;
 const fetchOK = (url, opts) => {
   fetchCount++;
-  const c = JSON.parse(opts.body);
-  let r = c.action === 'meses' ? { ok: true, meses: ['Agosto'], mesAtual: 'Agosto' }
-        : c.action === 'opcoes' ? { ok: true, categorias: ['Salário'], contas: ['Banco do Brasil'] }
-        : LANCS;
-  return Promise.resolve({ json: () => Promise.resolve(r) });
+  const u = new URL(url);
+  const table = (u.pathname.match(/\/rest\/v1\/(\w+)/) || [])[1] || '';
+  const q = u.searchParams;
+  const res = (payload, status = 200) => Promise.resolve({
+    ok: status >= 200 && status < 300, status,
+    text: () => Promise.resolve(payload == null ? '' : JSON.stringify(payload))
+  });
+  if (table === 'meses') return Promise.resolve(res(q.has('id') ? [{ id: 'Agosto' }] : [{ id: 'Agosto' }]));
+  if (table === 'lancamentos') {
+    if (q.get('select') === 'categoria,conta') return Promise.resolve(res([{ categoria: 'Salário', conta: 'Banco do Brasil' }]));
+    return Promise.resolve(res(((q.get('mes_id') || '').replace(/^eq\./, '') === 'Agosto') ? ROWS : []));
+  }
+  return Promise.resolve(res([]));
 };
 
 const assert = require('assert');

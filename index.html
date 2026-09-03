@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon.svg">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=29">
+<link rel="stylesheet" href="style.css?v=30">
 </head>
 <body>
 
@@ -21,9 +21,6 @@
   <h1>💰 Controle Financeiro</h1>
   <span id="sync-status" class="sync-status" hidden></span>
   <div class="topo-acoes">
-    <a id="btn-planilha" class="btn-planilha" target="_blank" rel="noopener"
-       href="https://docs.google.com/spreadsheets/d/1jp7hBdUXn5ZmgxVM8UwZFqLB7B4mT8Irmm3EYGwM9Ns/edit"
-       title="Abrir a planilha">📊</a>
     <button id="btn-tema" class="btn-tema" type="button" title="Alternar tema">🌙</button>
   </div>
 </header>
@@ -81,7 +78,7 @@
   </section>
 
   <div id="aviso-config" class="aviso aviso-erro" hidden>
-    ⚠️ APPS_SCRIPT_URL ainda não configurado no <code>config.js</code>.
+    ⚠️ SUPABASE_URL / SUPABASE_ANON_KEY ainda não configurados no <code>config.js</code>.
     Veja o README.md (Passo 1) para configurar.
   </div>
 
@@ -198,12 +195,12 @@
 
 <div id="toast" class="toast" hidden></div>
 
-<script src="config.js?v=29"></script>
-<script src="app.js?v=29"></script>
+<script src="config.js?v=30"></script>
+<script src="app.js?v=30"></script>
 <script>
   // Registra o service worker (PWA) — falha silenciosa se não suportado/Https.
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js?v=29').catch(function () {});
+    navigator.serviceWorker.register('service-worker.js?v=30').catch(function () {});
   }
 </script>
 </body>

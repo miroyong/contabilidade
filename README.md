@@ -1,43 +1,36 @@
 # Controle Financeiro 💰
 
-Aplicação web simples (HTML/CSS/JS, sem dependências) que lê e grava lançamentos
-diretamente na sua planilha Google de contabilidade.
+Aplicação web (HTML/CSS/JS, **sem dependências** e sem build) com backend no
+**Supabase (Postgres)** via REST (PostgREST). Funciona como PWA (offline
+primeiro, com cache local e sincronização) e traz dashboard e relatórios.
 
-- Lançamento rápido de entradas e saídas (grava na aba do mês)
+- Lançamento rápido de entradas e saídas, com saldo por conta (⚡ Pix / 💵 Físico)
 - Extrato com filtros (tipo, categoria, conta, busca)
-- Resumo automático: totais, balanço e gráfico de saídas por categoria
-- Editar e excluir lançamentos
-- Criação de novas abas de mês com a mesma estrutura da planilha
+- Dashboard: pizza entradas × saídas, insights e comparativo com o mês anterior
+- Editar/excluir lançamentos, marcar "pago/enviado ✓" em despesas (Dízimo/Custos)
+- Lançamentos recorrentes (cria nos próximos meses)
+- Aba 🪙 Chaveiros: calcula venda/custo/dízimo/alimentação/transporte e lança tudo
+- PWA: instala no celular, abre offline e sincroniza quando volta
 
 ## Como funciona
 
 ```
-App web (GitHub Pages)  ──▶  Google Apps Script (Web App)  ──▶  Sua planilha
+App web (PWA) ── fetch /rest/v1 (PostgREST) ──▶ Supabase (Postgres)
 ```
 
-O navegador chama o Apps Script via fetch (JSON). O script lê/escreve nas abas
-mensais (Agosto, Setembro, …). Cada aba tem duas tabelas lado a lado:
+O navegador fala direto com a API REST do Supabase usando a chave pública
+**anon**. O contrato do app é simples — meses por nome (ex.: `Agosto`) e cada
+lançamento tem `tipo`, `data`, `descricao`, `categoria`, `conta`, `valor`
+(a coluna `num` do banco vira a "linha" que o app usa para editar/excluir).
 
-- ENTRADAS: colunas A–E (Data, Descrição, Categoria, Conta, Valor)
-- SAÍDAS:   colunas G–K (Data, Descrição, Categoria, Conta, Valor)
+Schema documentado em `supabase/schema.sql` (tabelas `meses` e `lancamentos`
++ RLS).
 
-## Passo 1 — Apps Script (JÁ FEITO ✅)
+## Passo 1 — Criar o banco (1 vez)
 
-O backend já está implantado via API do Google Apps Script:
-
-- **Projeto (standalone):** ControleFinanceiro
-  https://script.google.com/home/projects/1CHsIJJSQMh4a6XpnuIjvCwYlqMnStq00m5DjSfUFVcMYpASDaLkUBOwS/edit
-- **URL do web app (no config.js):**
-  https://script.google.com/macros/s/AKfycbyAVntpjaF3tfUJ0Rw__8wP7Ry6-nCRvPjQmdd6nTu1fxIsRy9E2n7kqXlB2pcetUbX/exec
-- **Config:** Executar como: Eu · Quem tem acesso: Qualquer pessoa
-- A autorização pública foi ativada em Implantar → Gerenciar implantações → ✏️ → Nova versão
-
-> ⚠️ **Depois de mudar o `apps-script/Code.gs`**, é preciso publicar uma nova
-> versão e redeploy (o /exec serve a versão fixada). Duas opções:
->
-> 1. Pela UI (simples): editor do script → Implantar → Gerenciar implantações →
->    ✏️ → Nova versão → Implantar
-> 2. Via API (como foi feito): ver `scripts/deploy-apps-script.sh`
+1. No [Supabase Dashboard](https://supabase.com/dashboard), crie/abra o projeto.
+2. **SQL Editor** → cole o conteúdo de `supabase/schema.sql` → **Run**.
+3. Em **Project Settings → API**, copie **Project URL** e a chave **anon public**.
 
 ## Passo 2 — Configurar o site
 
@@ -45,58 +38,85 @@ Edite `config.js` e preencha:
 
 ```js
 window.APP_CONFIG = {
-  APPS_SCRIPT_URL: "https://script.google.com/macros/s/SEU_ID/exec",
-  APP_KEY: "cf-2026-k3x9pQ7mZt"
+  SUPABASE_URL: "https://SEU_PROJETO.supabase.co",
+  SUPABASE_ANON_KEY: "sua-chave-anon-publica"
 };
 ```
 
-A `APP_KEY` deve ser igual ao `APP_KEY` do `Code.gs` (é uma proteção simples
-contra uso indevido da URL pública — pode trocar nos dois lugares).
-
-> ⚠️ Depois de **mudar qualquer coisa no Code.gs**, vá em
-> Implantar → Gerenciar implantações → ✏️ (lápis) → **Nova versão** → Implantar.
-> O `/exec` serve a versão fixada no deploy — rodar pelo editor não publica.
+> A chave anon é pública mesmo — a proteção real é o RLS (que depois pode ser
+> apertado para exigir login).
 
 ## Passo 3 — Publicar no GitHub Pages
 
-O site **já está publicado** em: https://miroyong.github.io/contabilidade/
+O site está publicado em: https://miroyong.github.io/contabilidade/
 
-Depois de preencher o `config.js` (Passo 2), envie a atualização:
+Após mudanças:
 
 ```bash
-cd ~/contabilidade
-git add config.js && git commit -m "Configura URL do Apps Script" && git push
+git add -A && git commit -m "..." && git push
 ```
 
-O GitHub Pages atualiza automaticamente (leva ~1 min).
-
-> Se quiser recriar o repo do zero (não recomendado — já existe):
-> ```bash
-> gh repo create contabilidade --public --source . --push
-> gh api -X POST repos/miroyong/contabilidade/pages \
->   -f 'source[branch]=main' -f 'source[path]=/'
-> ```
+O Pages atualiza sozinho (~1 min). O service worker usa `?v=` e cache versionado
+— **suba a versão** (`index.html` + `service-worker.js`) quando trocar os
+assets para forçar atualização nos dispositivos.
 
 ## Uso
 
 - **＋ Novo lançamento**: escolha Entrada/Saída, preencha e Salvar.
-  Data aceita dd/mm/aaaa; valor aceita `1.234,56` ou `1234.56`.
-- **Chips de mês**: alternam entre as abas da planilha.
-- **＋ (criar mês)**: cria uma nova aba com títulos, cabeçalhos e fórmulas
-  iguais às existentes (BALANÇO, TOTAIS, formatação).
+  Valor aceita `1.234,56` ou `1234.56`. Marque "recorrente" para repetir nos
+  próximos meses.
+- **Chips de mês**: alternam entre os meses. **＋ (criar mês)** cria um novo.
 - **✏️ / 🗑️**: editar ou excluir um lançamento.
-- Os totais mostrados no app são calculados a partir dos lançamentos; a
-  planilha mantém as próprias fórmulas (BALANÇO, TOTAL DE ENTRADAS/SAÍDAS).
+- **○ / ✓** (despesa Dízimo/Custos): marcar como pago/enviado.
+- **🪙 Chaveiros**: informe quantos levou/voltou e os valores do dia → **Calcular**
+  → **Lançar tudo** (grava entradas de venda e saídas de custo/dízimo/alim/transp).
+- **Dashboard**: pizza, insights e comparativo vs mês anterior.
+- **Offline**: a 2ª abertura renderiza do cache local; as ações confirmam só
+  quando o servidor responde (sem "fantasma" de lançamento).
+
+## Migrando da planilha Google (legado)
+
+A versão anterior gravava numa planilha via Apps Script. O `apps-script/`
+continua no repositório **só como referência**. Para reaproveitar dados antigos,
+exporte as abas como CSV e importe no Table Editor do Supabase
+(`meses` = abas, `lancamentos` = linhas com `mes_id`, `tipo`, etc.).
 
 ## Estrutura do projeto
 
 ```
 contabilidade/
-├── index.html        # página principal
-├── style.css         # estilo (mobile-first)
-├── app.js            # lógica do app
-├── config.js         # URL do Apps Script + chave (PREENCHER)
-├── apps-script/
-│   └── Code.gs       # backend a colar na planilha
+├── index.html            # página principal (PWA)
+├── style.css             # estilo (mobile-first, claro/escuro)
+├── app.js                # lógica do app (fala com Supabase via fetch)
+├── config.js             # SUPABASE_URL + SUPABASE_ANON_KEY (PREENCHER)
+├── manifest.webmanifest  # PWA
+├── service-worker.js     # cache do app shell (não intercepta a API)
+├── icons/                # ícones do PWA
+├── supabase/
+│   └── schema.sql        # tabelas meses/lancamentos + RLS (documentação)
+├── apps-script/          # [legado] backend antigo da planilha (não usar)
+├── scripts/
+│   ├── test-backend.js       # lógica pura do Code.gs (legado)
+│   ├── test-frontend.js      # smoke test com PostgREST mockado
+│   ├── test-persistencia.js  # cache não guarda lançamento não confirmado
+│   ├── test-cache.js         # 2ª abertura renderiza do cache sem servidor
+│   └── deploy-apps-script.sh # [legado] redeploy do Apps Script
+├── .github/workflows/
+│   └── ci.yml            # CI: roda os 4 testes a cada push
 └── README.md
 ```
+
+## Testes e CI
+
+Só Node, sem dependências:
+
+```bash
+node scripts/test-backend.js
+node scripts/test-frontend.js
+node scripts/test-persistencia.js
+node scripts/test-cache.js
+```
+
+O GitHub Actions (`.github/workflows/ci.yml`) roda os quatro em todo
+`push`/`pull request`.
+

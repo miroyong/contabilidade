@@ -40,7 +40,7 @@ global.document = {
   querySelector: (sel) => makeEl(sel),
   documentElement: { dataset: {} },
 };
-global.window = { APP_CONFIG: { APPS_SCRIPT_URL: 'https://mock/exec', APP_KEY: 'cf-2026-k3x9pQ7mZt' } };
+global.window = { APP_CONFIG: { SUPABASE_URL: 'https://mock.supabase.co', SUPABASE_ANON_KEY: 'chave' } };
 global.window.matchMedia = () => ({ matches: false });
 const memStore = {};
 global.localStorage = {
@@ -53,30 +53,54 @@ global.confirm = () => true;
 global.prompt = () => 'Setembro';
 global.Intl = Intl;
 
-// ---------- fetch mock: responde como o Apps Script ----------
-const LANCAMENTOS = {
-  ok: true, existe: true, mes: 'Agosto',
-  entradas: [
-    { linha: 7, data: '2026-08-01', descricao: 'Salário', categoria: 'Salário', conta: 'Pix', valor: 2500 },
-    { linha: 9, data: '2026-08-15', descricao: 'Freela', categoria: 'Serviços', conta: 'Físico', valor: 300 }
-  ],
-  saidas: [
-    { linha: 7, data: '2026-08-02', descricao: 'Dízimo (venda de chaveiros)', categoria: 'Dízimo', conta: 'Pix', valor: 500 },
-    { linha: 8, data: '2026-08-10', descricao: 'Aluguel', categoria: 'Moradia', conta: 'Físico', valor: 1200 }
-  ],
-  totais: { entradas: 2800, saidas: 1700, balanco: 1100 }
-};
-const MESES = { ok: true, meses: ['Agosto', 'Setembro'], mesAtual: 'Agosto' };
-const OPCOES = { ok: true, categorias: ['Salário', 'Serviços', 'Alimentação', 'Moradia'], contas: ['Pix', 'Físico'] };
+// ---------- mês "corrente" (determinístico em qualquer data de execução) ----
+const pad2 = (n) => ('0' + n).slice(-2);
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+const agora = new Date();
+const ano = agora.getFullYear();
+const mesNum = agora.getMonth() + 1;
+const curName = cap(agora.toLocaleDateString('pt-BR', { month: 'long' }));
+const prevName = cap(new Date(ano, agora.getMonth() - 1, 1).toLocaleDateString('pt-BR', { month: 'long' }));
+const mm = pad2(mesNum);
+const d = (dia) => ano + '-' + mm + '-' + pad2(dia);
+
+// ---------- fetch mock: responde como o PostgREST do Supabase --------------
+const ROWS = [
+  { num: 10, tipo: 'entrada', data: d(1), descricao: 'Salário', categoria: 'Salário', conta: 'Pix', valor: 2500 },
+  { num: 20, tipo: 'entrada', data: d(15), descricao: 'Freela', categoria: 'Serviços', conta: 'Físico', valor: 300 },
+  { num: 30, tipo: 'saida', data: d(2), descricao: 'Dízimo (venda de chaveiros)', categoria: 'Dízimo', conta: 'Pix', valor: 500 },
+  { num: 40, tipo: 'saida', data: d(10), descricao: 'Aluguel', categoria: 'Moradia', conta: 'Físico', valor: 1200 }
+];
+const OP_ROWS = [
+  { categoria: 'Salário', conta: 'Pix' }, { categoria: 'Serviços', conta: 'Físico' },
+  { categoria: 'Dízimo', conta: 'Pix' }, { categoria: 'Moradia', conta: 'Físico' }
+];
+
+function okJson(body, status = 200) {
+  return { ok: status >= 200 && status < 300, status,
+    text: () => Promise.resolve(body == null ? '' : JSON.stringify(body)) };
+}
 
 global.fetch = (url, opts) => {
-  const corpo = JSON.parse(opts.body);
-  let res;
-  if (corpo.action === 'meses') res = MESES;
-  else if (corpo.action === 'opcoes') res = OPCOES;
-  else if (corpo.action === 'lancamentos') res = LANCAMENTOS;
-  else res = { ok: true };
-  return Promise.resolve({ json: () => Promise.resolve(res) });
+  const u = new URL(url);
+  const table = (u.pathname.match(/\/rest\/v1\/(\w+)/) || [])[1] || '';
+  const q = u.searchParams;
+  const method = (opts && opts.method) || 'GET';
+  if (table === 'meses') {
+    if (q.has('id')) { // verificação de existência do mês
+      const id = q.get('id').replace(/^eq\./, '');
+      return Promise.resolve(okJson(id === curName ? [{ id: curName }] : []));
+    }
+    return Promise.resolve(okJson([{ id: curName }, { id: prevName }]));
+  }
+  if (table === 'lancamentos') {
+    if (q.get('select') === 'categoria,conta') return Promise.resolve(okJson(OP_ROWS));
+    const mes = (q.get('mes_id') || '').replace(/^eq\./, '');
+    if (method === 'POST') return Promise.resolve(okJson([{ ...ROWS[0], num: 99 }], 201));
+    if (method === 'PATCH' || method === 'DELETE') return Promise.resolve(okJson(null, 204));
+    return Promise.resolve(okJson(mes === curName ? ROWS : []));
+  }
+  return Promise.resolve(okJson([]));
 };
 
 // ---------- carrega e executa o app ----------
@@ -91,7 +115,7 @@ const assert = require('assert');
 const norm = (s) => String(s).replace(/\u00A0/g, ' '); // NBSP → espaço normal
 
 setTimeout(() => {
-  assert.strictEqual(els['saldo-mes'].textContent, 'Agosto', 'mês selecionado');
+  assert.strictEqual(els['saldo-mes'].textContent, curName, 'mês selecionado');
   assert.strictEqual(norm(els['saldo-valor'].textContent), 'R$ 1.100,00', 'balanço formatado');
   assert.ok(els['saldo-valor'].className.includes('positivo'), 'classe positivo');
   assert.strictEqual(norm(els['saldo-entradas'].textContent), 'R$ 2.800,00', 'total entradas');
@@ -112,7 +136,7 @@ setTimeout(() => {
   assert.ok(!els['filtro-conta'].innerHTML.includes('Cartão de Crédito'), 'filtro sem contas legado');
 
   const mesesHtml = els['meses-list'].innerHTML;
-  assert.ok(mesesHtml.includes('Agosto') && mesesHtml.includes('Setembro'), 'chips de mês');
+  assert.ok(mesesHtml.includes(curName) && mesesHtml.includes(prevName), 'chips de mês');
   assert.ok(mesesHtml.includes('chip ativo'), 'chip ativo marcado');
 
   const graficoHtml = norm(els['grafico'].innerHTML);

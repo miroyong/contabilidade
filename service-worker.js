@@ -1,17 +1,17 @@
 /* Controle Financeiro — Service Worker (PWA)
- * Caca estáticos (app shell) em cache-first; NÃO caça o backend
- * Apps Script (cross-origin) nem respostas de API para não servir
- * dados velhos. Ao instalar/fazer update, pré-grava os assets atuais.
+ * Caca estáticos (app shell) em cache-first; NÃO caça a API do
+ * Supabase (cross-origin) para não servir dados velhos. Ao
+ * instalar/fazer update, pré-grava os assets atuais.
  * Suba VER a cada deploy para forçar refresh do shell.
  */
-const VER = 'contabilidade-v29';
+const VER = 'contabilidade-v30';
 const CACHE = VER;
 const PRECACHE = [
   './',
   './index.html',
-  './style.css?v=29',
-  './config.js?v=29',
-  './app.js?v=29',
+  './style.css?v=30',
+  './config.js?v=30',
+  './app.js?v=30',
   './manifest.webmanifest',
   './icons/favicon.svg',
   './icons/icon-192.png',
@@ -41,7 +41,7 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(req.url);
 
-  // API do Apps Script / planilha / qualquer origem externa: network-only.
+  // API do Supabase / qualquer origem externa: network-only.
   // Não intercepta para nunca servir dados de lançamento desatualizados.
   if (url.origin !== self.location.origin) return;
 

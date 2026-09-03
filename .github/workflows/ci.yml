@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Testes do backend (Code.gs legado)
+        run: node scripts/test-backend.js
+
+      - name: Smoke test do front-end (Supabase mock)
+        run: node scripts/test-frontend.js
+
+      - name: Persistência (cache não mente)
+        run: node scripts/test-persistencia.js
+
+      - name: Cache quente (2ª abertura sem servidor)
+        run: node scripts/test-cache.js

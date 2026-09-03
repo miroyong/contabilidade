@@ -5,8 +5,8 @@
   'use strict';
 
   var API = window.APP_CONFIG || {};
-  var SCRIPT_URL = API.APPS_SCRIPT_URL || '';
-  var APP_KEY = API.APP_KEY || '';
+  var SB_URL = (API.SUPABASE_URL || '').replace(/\/+$/, '');
+  var SB_KEY = API.SUPABASE_ANON_KEY || '';
 
   var state = {
     mes: null,          // aba selecionada (ex.: "Agosto")
@@ -61,17 +61,175 @@
 
   // ------------------------------------------------------------ utilidades
   function chamar(action, params) {
-    var corpo = Object.assign({ action: action, key: APP_KEY }, params || {});
+    params = params || {};
+    switch (action) {
+      case 'meses':       return sbMeses();
+      case 'opcoes':      return sbOpcoes();
+      case 'lancamentos': return sbLancamentos(params.mes);
+      case 'adicionar':   return sbAdicionar(params);
+      case 'atualizar':   return sbAtualizar(params);
+      case 'excluir':     return sbExcluir(params);
+      case 'novoMes':     return sbNovoMes(params.mes);
+      default:            return Promise.resolve({ ok: false, erro: 'Ação desconhecida: ' + action });
+    }
+  }
+
+  // ------------------------------------------------- Supabase REST (PostgREST)
+  function sbRest(path, opts) {
+    opts = opts || {};
+    var url = SB_URL + '/rest/v1/' + path + (opts.query ? '?' + opts.query : '');
+    var cfg = {
+      method: opts.method || 'GET',
+      headers: {
+        'apikey': SB_KEY,
+        'Authorization': 'Bearer ' + SB_KEY,
+        'Content-Type': 'application/json'
+      }
+    };
+    if (opts.body) cfg.body = JSON.stringify(opts.body);
+    if (opts.prefer) cfg.headers['Prefer'] = opts.prefer;
     var ctrl = new AbortController();
     var timer = setTimeout(function () { ctrl.abort(); }, 90000);
-    return fetch(SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(corpo),
-      signal: ctrl.signal
-    }).then(function (r) {
+    cfg.signal = ctrl.signal;
+    return fetch(url, cfg).then(function (r) {
       clearTimeout(timer);
-      return r.json();
+      return r.text().then(function (t) {
+        if (!r.ok) {
+          var msg = 'HTTP ' + r.status;
+          try {
+            var j = JSON.parse(t);
+            if (j.message) msg += ' — ' + j.message;
+            else if (j.details) msg += ' — ' + j.details;
+            else if (t) msg += ' — ' + t.slice(0, 180);
+          } catch (e) { if (t) msg += ' — ' + t.slice(0, 180); }
+          throw new Error(msg);
+        }
+        if (!t) return null;
+        try { return JSON.parse(t); } catch (e) { return null; }
+      });
+    });
+  }
+
+  function sbEnc(v) { return encodeURIComponent(String(v == null ? '' : v)); }
+
+  // mês corrente em pt-BR (ex.: "Setembro") — antes era calculado no servidor
+  function sbMesCorrente() {
+    var d = new Date();
+    var n = d.toLocaleDateString('pt-BR', { month: 'long' });
+    return n.charAt(0).toUpperCase() + n.slice(1);
+  }
+
+  // linha = num (id numérico estável do banco); app não muda o restante
+  function sbMontar(r) {
+    return {
+      linha: Number(r.num),
+      data: String(r.data || ''),
+      descricao: String(r.descricao == null ? '' : r.descricao).trim(),
+      categoria: String(r.categoria == null ? '' : r.categoria).trim(),
+      conta: String(r.conta == null ? '' : r.conta).trim(),
+      valor: Number(r.valor) || 0
+    };
+  }
+
+  function sbMeses() {
+    return sbRest('meses', { query: 'select=id&order=criado_em.asc,id.asc' })
+      .then(function (rows) {
+        return {
+          ok: true,
+          meses: (rows || []).map(function (r) { return r.id; }),
+          mesAtual: sbMesCorrente()
+        };
+      });
+  }
+
+  function sbOpcoes() {
+    return sbRest('lancamentos', { query: 'select=categoria,conta' })
+      .then(function (rows) {
+        var cats = {}, contas = {};
+        (rows || []).forEach(function (r) {
+          if (r.categoria) cats[String(r.categoria).trim()] = 1;
+          if (r.conta) contas[String(r.conta).trim()] = 1;
+        });
+        return {
+          ok: true,
+          categorias: Object.keys(cats).sort(),
+          contas: Object.keys(contas).sort()
+        };
+      });
+  }
+
+  function sbLancamentos(mes) {
+    var qMes = 'mes_id=eq.' + sbEnc(mes);
+    return Promise.all([
+      sbRest('lancamentos', {
+        query: 'select=num,tipo,data,descricao,categoria,conta,valor&' + qMes + '&order=data.asc,num.asc'
+      }),
+      sbRest('meses', { query: 'select=id&id=eq.' + sbEnc(mes) })
+    ]).then(function (rs) {
+      var rows = rs[0] || [];
+      var existe = (rs[1] || []).length > 0;
+      var entradas = [], saidas = [];
+      rows.forEach(function (r) {
+        var it = sbMontar(r);
+        if (r.tipo === 'saida') saidas.push(it); else entradas.push(it);
+      });
+      var totE = entradas.reduce(function (s, l) { return s + l.valor; }, 0);
+      var totS = saidas.reduce(function (s, l) { return s + l.valor; }, 0);
+      return {
+        ok: true, existe: existe, mes: mes,
+        entradas: entradas, saidas: saidas,
+        totais: { entradas: totE, saidas: totS, balanco: totE - totS }
+      };
+    });
+  }
+
+  function sbAdicionar(p) {
+    return sbRest('lancamentos', {
+      method: 'POST',
+      prefer: 'return=representation',
+      body: {
+        mes_id: p.mes, tipo: p.tipo, data: p.data,
+        descricao: p.descricao, categoria: p.categoria || '',
+        conta: p.conta || '', valor: p.valor
+      }
+    }).then(function (rows) {
+      rows = rows || [];
+      return { ok: true, linha: rows.length ? Number(rows[0].num) : null };
+    });
+  }
+
+  function sbAtualizar(p) {
+    return sbRest('lancamentos', {
+      query: 'num=eq.' + sbEnc(p.linha),
+      method: 'PATCH',
+      prefer: 'return=representation',
+      body: {
+        tipo: p.tipo, data: p.data,
+        descricao: p.descricao, categoria: p.categoria || '',
+        conta: p.conta || '', valor: p.valor
+      }
+    }).then(function () { return { ok: true }; });
+  }
+
+  function sbExcluir(p) {
+    return sbRest('lancamentos', {
+      query: 'num=eq.' + sbEnc(p.linha) + '&mes_id=eq.' + sbEnc(p.mes),
+      method: 'DELETE'
+    }).then(function () { return { ok: true }; });
+  }
+
+  function sbNovoMes(mes) {
+    if (!mes) return Promise.resolve({ ok: false, erro: 'Informe o mês.' });
+    return sbRest('meses', {
+      method: 'POST', prefer: 'return=representation', body: { id: mes }
+    }).then(function () {
+      return { ok: true, criado: true, mes: mes };
+    }).catch(function (e) {
+      // mês já existe (chave duplicada 23505) — comportamento igual ao antigo
+      if (/23505|duplicate|already exists/i.test(String(e.message))) {
+        return { ok: true, criado: false, mes: mes };
+      }
+      return { ok: false, erro: e.message };
     });
   }
 
@@ -125,7 +283,7 @@
 
   // ------------------------------------------------------------ carregamento
   function carregarInicio() {
-    if (!SCRIPT_URL) {
+    if (!SB_URL || !SB_KEY) {
       $('aviso-config').hidden = false;
       $('btn-novo').disabled = true;
       return;
@@ -170,8 +328,8 @@
         syncStatus(false);
         if (!renderDoCache(state.mes)) {
           $('aviso-config').hidden = false;
-          $('aviso-config').textContent = 'Erro ao conectar: ' + e.message +
-            '. Confira o APPS_SCRIPT_URL no config.js.';
+          $('aviso-config').textContent = 'Erro ao conectar no Supabase: ' + e.message +
+            '. Confira o SUPABASE_URL/SUPABASE_ANON_KEY no config.js.';
         }
       });
   }
