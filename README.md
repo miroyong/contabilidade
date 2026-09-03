@@ -85,8 +85,9 @@ SEFAZ) e o app **pré-preenche o lançamento** com o total, data e loja.
   `p` (total/data/chave — sem depender da SEFAZ) e, quando consegue, busca
   emitente e itens na página.
 - A função está publicada no Supabase (`/functions/v1/nfce`, auth por anon).
-- ⚠️ A consulta dos **itens/emitente** é *best-effort*: varia por estado e a
-  SEFAZ pode bloquear (CAPTCHA). O **total sempre** é obtido do próprio QR.
+- ⚠️ **Minas Gerais**: o QR (portalsped) não traz o total e a consulta automática
+  cai em **CAPTCHA** da SEFAZ — o app avisa e você informa o valor manualmente.
+  Estados com QR em JSON (ex.: SP) permitem pegar o total direto do QR.
   Se um cupom seu não detalhar, me mande a URL que eu ajusto o parser.
 
 ## Migrando da planilha Google (legado)

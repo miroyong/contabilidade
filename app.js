@@ -1331,10 +1331,21 @@
       }
       var d = j.dados || {};
       state.nfc = d;
+      if (d.captcha || d.aviso) {
+        st.textContent = d.aviso ||
+          'A SEFAZ pediu verificação (CAPTCHA) e bloqueou a leitura automática. Informe o valor manualmente.';
+        st.hidden = false;
+        $('nfc-result').hidden = true;
+        $('nfc-result').innerHTML = '';
+        $('nfc-usar').hidden = true;
+        return;
+      }
+      if (!d.total && d.totalPagina) d.total = d.totalPagina; // total vindo da página
       var html = '';
       if (d.emitente) html += '<div class="nfc-linha"><span>Loja</span><b>' + esc(d.emitente) + '</b></div>';
       if (d.total) html += '<div class="nfc-linha"><span>Total</span><b>' + fmtBRL.format(d.total) + '</b></div>';
       if (d.data) html += '<div class="nfc-linha"><span>Data</span><b>' + fmtDataBR(d.data) + '</b></div>';
+      if (d.chaveCurta) html += '<div class="nfc-linha"><span>Chave</span><b>…' + esc(d.chaveCurta) + '</b></div>';
       var itens = d.itens || [];
       html += '<div class="nfc-linha"><span>Itens</span><b>' + itens.length + '</b></div>';
       if (itens.length) {
@@ -1348,7 +1359,7 @@
         st.hidden = true;
         $('nfc-usar').hidden = false;
       } else {
-        st.textContent = 'Cupom lido, mas sem valor detectado. Tente colar a URL completa.';
+        st.textContent = 'Não foi possível obter o total (QR sem valor neste estado). Informe manualmente.';
       }
     }).catch(function (e) {
       st.textContent = 'Erro de rede: ' + e.message;

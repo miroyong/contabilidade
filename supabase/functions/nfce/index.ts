@@ -1,15 +1,15 @@
 // ============================================================
-// NFC-e helper — lê o QR do cupom (Ministério da Fazenda/SEFAZ)
+// NFC-e helper — lê o QR do cupom (SEFAZ)
 //
-// O QR da NFC-e contém uma URL de consulta com o parâmetro "p":
-// um JSON em base64 com a chave, data e TOTAL da nota (vNF).
-// 1) Decodificamos "p" -> total/data/chave SEM depender da SEFAZ.
-// 2) Best-effort: consultamos a página pública p/ tentar pegar o
-//    emitente e os itens (pode variar por estado e falhar/captcha).
+// O parâmetro "p" do QR tem formatos DIFERENTES por estado:
+//  - MG (portalsped): pipe -> chave|nVersao|tpAmb|cDest|hash
+//    (NÃO traz total; a página exige CAPTCHA/Turnstile)
+//  - Outros estados (SP, RS...): base64 de JSON com chNFe/vNF/dhEmi
+//    (aí o total vem direto do QR, sem depender da SEFAZ)
 //
-// Uso (POST JSON):
-//   { "url": "https://www.sefaz.mg.gov.br/nfce/qrcode?p=..." }  ou
-//   { "p": "<base64>", "uf": "mg" }
+// Sempre que der, também tentamos a página pública p/ emitente/itens.
+//
+// Uso (POST JSON): { "url": "...qrcode...?p=..." } | { "p": "...", "uf": "mg" }
 // ============================================================
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
@@ -26,10 +26,9 @@ function json(obj: unknown, status = 200, extra: Record<string, string> = {}) {
   });
 }
 
-// padrões comuns de consulta pública NFC-e (podem mudar por estado);
-// a URL completa vinda do cupom tem prioridade sobre este mapa
+// URLs de consulta pública por estado (a URL completa do QR tem prioridade)
 const UF_CONSULT: Record<string, string> = {
-  mg: "https://www.sefaz.mg.gov.br/nfce/qrcode?p=",
+  mg: "https://portalsped.fazenda.mg.gov.br/portalnfce/sistema/qrcode.xhtml?p=",
   sp: "https://www.nfce.fazenda.sp.gov.br/qrcode?p=",
   rs: "https://www.sefaz.rs.gov.br/NFCE/NFCE-COM.aspx?p=",
   ba: "https://www.sefaz.ba.gov.br/nfce/qrcode?p=",
@@ -43,31 +42,55 @@ function b64Decode(s: string): string {
   return new TextDecoder().decode(bytes);
 }
 
-// extrai campos úteis do JSON contido no "p" do QR
+// interpreta o "p" (vários formatos) e devolve o que der para extrair
 function decodePayload(p: string) {
+  // formato MG: chave|nVersao|tpAmb|cDest|hash
+  if (p.includes("|")) {
+    const parts = p.split("|").map((s) => s.trim());
+    const chave = /^\d{44}$/.test(parts[0] || "") ? parts[0] : "";
+    const dt = chave ? chaveAAMM(chave) : null;
+    return {
+      formato: "mg-pipe",
+      chave: chave || null,
+      chaveCurta: chave ? chave.slice(-8) : null,
+      emissao: null,
+      data: dt ? dt.data : null,
+      total: null, // o MG não põe o total no QR
+      icms: null,
+      ambiente: parts[2] || null,
+    };
+  }
+  // formato JSON em base64 (vários estados)
   let raw: Record<string, unknown> = {};
   try {
     raw = JSON.parse(b64Decode(p));
   } catch {
-    raw = {}; // alguns layouts podem vir cifrados/regionais — segue sem detalhes
+    raw = {};
   }
   const chave = String(raw.chNFe || "").trim();
   const dhEmi = String(raw.dhEmi || "").trim();
   const vNF = Number(raw.vNF);
-  const vICMS = Number(raw.vICMS);
-  const data = dhEmi.slice(0, 10); // yyyy-mm-dd
   return {
+    formato: "json",
     chave: chave || null,
     chaveCurta: chave ? chave.slice(-8) : null,
     emissao: dhEmi || null,
-    data: data || null,
+    data: dhEmi.slice(0, 10) || null,
     total: isFinite(vNF) && vNF > 0 ? vNF : null,
-    icms: isFinite(vICMS) ? vICMS : null,
+    icms: isFinite(Number(raw.vICMS)) ? Number(raw.vICMS) : null,
     ambiente: String(raw.tpAmb || "1"),
   };
 }
 
-// tenta baixar a página pública e extrair emitente + itens (best-effort)
+// extrai ano/mês da chave de acesso (posições 3-6: AAMM)
+function chaveAAMM(chave: string) {
+  const aamm = chave.slice(2, 6); // ex.: "2609"
+  const ano = 2000 + Number(aamm.slice(0, 2));
+  const mes = Number(aamm.slice(2, 4));
+  return { data: ano + "-" + String(mes).padStart(2, "0") + "-01", ano, mes };
+}
+
+// baixa a página pública; detecta CAPTCHA e extrai emitente/itens/total
 async function fetchPage(url: string) {
   const res = await fetch(url, {
     headers: {
@@ -79,24 +102,31 @@ async function fetchPage(url: string) {
     redirect: "follow",
   });
   const html = await res.text();
+  const temCaptcha = /(re)?captcha|turnstile|cloudflare/i.test(html);
   let emitente = "";
   const mTitle = html.match(/<title[^>]*>([^<]*)<\/title>/i);
   if (mTitle) emitente = mTitle[1].replace(/^\s+|\s+$/g, "");
   const itens: string[] = [];
-  // heurística simples: linhas com descrição e valor monetário (formato BR)
-  const re = />([^<>]{3,80}?)<\/[^>]+>[^<>]*?R\$\s?([\d.,]+)</gi;
-  let mm: RegExpExecArray | null;
-  let guard = 0;
-  while ((mm = re.exec(html)) && guard++ < 60) {
-    const d = mm[1].trim();
-    const v = mm[2].trim();
-    if (d && !/data|hora|n\.?\s?/i.test(d)) itens.push(d + " — R$ " + v);
+  let totalPagina: number | null = null;
+  if (!temCaptcha) {
+    const re = />([^<>]{3,80}?)<\/[^>]+>[^<>]*?R\$\s?([\d.,]+)</gi;
+    let mm: RegExpExecArray | null;
+    let guard = 0;
+    while ((mm = re.exec(html)) && guard++ < 80) {
+      const d = mm[1].trim();
+      const v = mm[2].trim().replace(/\./g, "").replace(",", ".");
+      if (d && !/data|hora/i.test(d)) itens.push(d + " — R$ " + mm[2].trim());
+    }
+    const mTot = html.match(/Total\s*R\$\s?([\d.,]+)/i);
+    if (mTot) totalPagina = Number(mTot[1].replace(/\./g, "").replace(",", "."));
   }
   return {
     url: res.url || url,
     status: res.status,
-    emitente,
-    itens,
+    captcha: temCaptcha,
+    emitente: temCaptcha ? "" : emitente,
+    itens: temCaptcha ? [] : itens,
+    totalPagina,
     temConteudo: html.length > 0,
   };
 }
@@ -126,7 +156,7 @@ Deno.serve(async (req) => {
 
     const payload = decodePayload(p);
 
-    // consulta à página pública (opcional): emitente + itens
+    // consulta à página pública (emitente/itens) — pode exigir CAPTCHA
     let consulta: Awaited<ReturnType<typeof fetchPage>> | null = null;
     const consultUrl = url || (UF_CONSULT[uf] ? UF_CONSULT[uf] + encodeURIComponent(p) : "");
     if (consultUrl) {
@@ -137,15 +167,21 @@ Deno.serve(async (req) => {
       }
     }
 
+    const captcha = !!(consulta && consulta.captcha);
     return json(
       {
         ok: true,
         dados: {
           ...payload,
-          emitente: consulta?.emitente || "",
-          itens: consulta?.itens || [],
-          consultaOk: !!consulta && consulta.status === 200,
-          pagina: consulta?.url || consultUrl || null,
+          emitente: (consulta && consulta.emitente) || "",
+          itens: (consulta && consulta.itens) || [],
+          totalPagina: (consulta && consulta.totalPagina) || null,
+          captcha,
+          aviso: captcha
+            ? "A SEFAZ exigiu verificação (CAPTCHA) e bloqueou a consulta automática."
+            : null,
+          consultaOk: !!consulta && consulta.status === 200 && !captcha,
+          pagina: (consulta && consulta.url) || consultUrl || null,
         },
       },
       200,
