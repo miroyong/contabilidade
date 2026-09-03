@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon.svg">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=31">
+<link rel="stylesheet" href="style.css?v=32">
 </head>
 <body>
 
@@ -27,16 +27,20 @@
 
 <nav class="visualizacao" id="viz">
   <button type="button" class="viz-btn ativo" data-viz="fin">💼 Financeiro</button>
-  <button type="button" class="viz-btn" data-viz="cha">🪙 Chaveiros</button>
+  <button type="button" class="viz-btn" data-viz="cha">🪙 Arrecadação</button>
 </nav>
 
 <main>
   <!-- Aba Chaveiros: arrecadacao com venda de chaveiros (3D/2D/abridor) -->
   <section id="chaveiros-section" class="cartao chaveiros" hidden>
-    <h2>🪙 Arrecadação com chaveiros</h2>
-    <p class="cha-dica">Informe quantos levou e quantos voltaram no mosquetão, e o dinheiro apurado no dia. O app calcula o que vendeu e lança tudo nas contas automaticamente.</p>
+    <h2>🪙 Arrecadação do dia</h2>
+    <div class="cha-tipo" id="cha-tipo">
+      <button type="button" class="cha-tipo-btn ativo" data-cha-tipo="chaveiros">🪙 Chaveiros</button>
+      <button type="button" class="cha-tipo-btn" data-cha-tipo="brownie">🍫 Brownie</button>
+    </div>
+    <p class="cha-dica">Informe quantos levou e quantos voltaram (chaveiros ou brownie) e o que apurou no dia. O app calcula o que vendeu, o custo, o dízimo e lança tudo automaticamente.</p>
 
-    <div class="cha-produtos">
+    <div class="cha-produtos" id="cha-chaveiros-block">
       <div class="cha-item">
         <h3>Chaveiro 3D · custo R$ 5</h3>
         <label>Levou <input type="number" id="cha-levou-3d" min="0" inputmode="numeric" placeholder="0"></label>
@@ -51,6 +55,17 @@
         <h3>Abridor · custo R$ 1</h3>
         <label>Levou <input type="number" id="cha-levou-ab" min="0" inputmode="numeric" placeholder="0"></label>
         <label>Voltou <input type="number" id="cha-voltou-ab" min="0" inputmode="numeric" placeholder="0"></label>
+      </div>
+    </div>
+
+    <div class="cha-produtos cha-brownie" id="cha-brownie-block" hidden>
+      <div class="cha-item">
+        <h3>🍫 Brownie</h3>
+        <label>Levou <input type="number" id="cha-b-levou" min="0" inputmode="numeric" placeholder="0"></label>
+        <label>Voltou <input type="number" id="cha-b-voltou" min="0" inputmode="numeric" placeholder="0"></label>
+        <label>Custo por unidade (R$)
+          <input type="text" id="cha-b-custo" inputmode="decimal" value="1,40">
+        </label>
       </div>
     </div>
 
@@ -74,7 +89,7 @@
 
     <div id="cha-resumo" class="cha-resumo" hidden></div>
 
-    <button type="button" class="btn-primario cha-lancar" id="cha-lancar" hidden>💾 Lançar tudo na planilha</button>
+    <button type="button" class="btn-primario cha-lancar" id="cha-lancar" hidden>💾 Lançar tudo</button>
   </section>
 
   <div id="aviso-config" class="aviso aviso-erro" hidden>
@@ -197,12 +212,12 @@
 
 <div id="toast" class="toast" hidden></div>
 
-<script src="config.js?v=31"></script>
-<script src="app.js?v=31"></script>
+<script src="config.js?v=32"></script>
+<script src="app.js?v=32"></script>
 <script>
   // Registra o service worker (PWA) — falha silenciosa se não suportado/Https.
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js?v=31').catch(function () {});
+    navigator.serviceWorker.register('service-worker.js?v=32').catch(function () {});
   }
 </script>
 </body>
