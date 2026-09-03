@@ -910,6 +910,54 @@
   }
 
   // ------------------------------------------------------------ modal
+
+  // ---- atalhos "1 toque": preenche Conta/Categoria sem digitar ----
+  function preencherChipsRapidos() {
+    var boxConta = $('chips-conta');
+    var boxCat = $('chips-categoria');
+    if (!boxConta || !boxCat) return; // (nós ausentes em testes/mock)
+
+    function montar(container, itens) {
+      if (!itens.length) { container.hidden = true; container.innerHTML = ''; return; }
+      container.hidden = false;
+      container.innerHTML = itens.map(function (v) {
+        return '<button type="button" class="chip-rapido" data-val="' + esc(v) + '">' + esc(v) + '</button>';
+      }).join('');
+    }
+    function ligar(box, input) {
+      Array.prototype.forEach.call(box.querySelectorAll('.chip-rapido'), function (b) {
+        b.addEventListener('click', function () {
+          input.value = b.dataset.val;
+          Array.prototype.forEach.call(box.querySelectorAll('.chip-rapido'), function (x) {
+            x.classList.toggle('ativo', x === b);
+          });
+        });
+      });
+    }
+    function marcar(box, val) {
+      if (!val) return;
+      Array.prototype.forEach.call(box.querySelectorAll('.chip-rapido'), function (x) {
+        x.classList.toggle('ativo', x.dataset.val === val);
+      });
+    }
+
+    // contas: sempre Pix/Físico
+    montar(boxConta, contasOpcoes().slice(0, 4));
+    // categorias: mais usadas no mês primeiro; depois as demais (limite 8)
+    var peso = {};
+    state.entradas.concat(state.saidas).forEach(function (l) {
+      if (l.categoria) peso[l.categoria] = (peso[l.categoria] || 0) + l.valor;
+    });
+    var cats = Object.keys(peso).sort(function (a, b) { return peso[b] - peso[a]; });
+    state.categorias.forEach(function (c) { if (cats.indexOf(c) < 0) cats.push(c); });
+    montar(boxCat, cats.slice(0, 8));
+
+    ligar(boxConta, $('f-conta'));
+    ligar(boxCat, $('f-categoria'));
+    marcar(boxConta, $('f-conta').value);
+    marcar(boxCat, $('f-categoria').value);
+  }
+
   function abrirModal(modo, tipo, linha) {
     state.editando = null;
     $('f-data').value = hojeISO();
@@ -936,6 +984,8 @@
       $('modal-titulo').textContent = 'Editar lançamento';
       state.editando = { tipo: tipo, linha: linha };
     }
+
+    preencherChipsRapidos(); // atalhos de Conta/Categoria (1 toque)
 
     $('modal').showModal();
     $('f-descricao').focus();
