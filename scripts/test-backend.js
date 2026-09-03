@@ -97,4 +97,26 @@ eq(ctx.acaoOpcoes(opPlan),
 // --- roteador: chave inválida ---------------------------------------------
 eq(ctx.processar({ action: 'meses', key: 'errada' }), { ok: false, erro: 'Chave de acesso inválida.' });
 
+// --- sane / dataValida / primeiroErro (validação) --------------------------
+assert.strictEqual(ctx.sane('  abc  ', 5), 'abc');
+assert.strictEqual(ctx.sane('abcdef', 3), 'abc');
+assert.strictEqual(ctx.sane(null, 5), '');
+assert.strictEqual(ctx.dataValida('2026-02-29'), false);  // não bissexto
+assert.strictEqual(ctx.dataValida('2024-02-29'), true);   // bissexto
+assert.strictEqual(ctx.dataValida('2026-13-01'), false);  // mês inválido
+assert.strictEqual(ctx.dataValida('2026-08-05'), true);
+assert.strictEqual(ctx.dataValida(''), false);
+assert.strictEqual(ctx.dataValida(null), false);
+
+const base = { tipo: 'saida', mes: 'Agosto', data: '2026-08-05',
+               descricao: 'Mercado', categoria: 'Alimentação', conta: 'Cartão', valor: 50 };
+assert.strictEqual(ctx.primeiroErro(Object.assign({}, base)), null);                  // válido
+assert.strictEqual(ctx.primeiroErro(Object.assign({}, base, { tipo: 'x' })), 'Tipo de lançamento inválido.');
+assert.strictEqual(ctx.primeiroErro(Object.assign({}, base, { mes: '' })), 'Informe o mês.');
+assert.strictEqual(ctx.primeiroErro(Object.assign({}, base, { descricao: '  ' })), 'Informe a descrição.');
+assert.strictEqual(ctx.primeiroErro(Object.assign({}, base, { data: '2026-02-30' })), 'Data inválida.');
+assert.strictEqual(ctx.primeiroErro(Object.assign({}, base, { valor: 0 })), 'Valor inválido (use ex.: 123,45).');
+assert.strictEqual(ctx.primeiroErro(Object.assign({}, base, { valor: -3 })), 'Valor inválido (use ex.: 123,45).');
+assert.strictEqual(ctx.primeiroErro(Object.assign({}, base, { valor: 'abc' })), 'Valor inválido (use ex.: 123,45).');
+
 console.log('✔ TODOS OS TESTES PASSARAM (backend lógica pura)');

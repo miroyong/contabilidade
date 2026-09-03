@@ -46,6 +46,7 @@ function processar(p) {
     if (!p || p.key !== APP_KEY) {
       return { ok: false, erro: 'Chave de acesso inválida.' };
     }
+    if (p.mes) p.mes = sane(String(p.mes), 40); // normaliza nome de aba
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     switch (p.action) {
       case 'meses':       return acaoMeses(ss);
@@ -100,11 +101,14 @@ function acaoLancamentos(ss, mes) {
 }
 
 function acaoAdicionar(ss, p) {
+  var err = primeiroErro(p);
+  if (err) return { ok: false, erro: err };
   var sh = ss.getSheetByName(p.mes);
   if (!sh) return { ok: false, erro: 'A aba "' + p.mes + '" não existe. Crie o mês antes.' };
   var col = (p.tipo === 'saida') ? 7 : 1;
   var linha = acharLinhaLivre(sh, col);
-  var dados = [parseData(p.data), p.descricao, p.categoria, p.conta, parseValor(p.valor)];
+  var dados = [parseData(p.data), sane(p.descricao, MAX_LEN),
+               sane(p.categoria, MAX_LEN), sane(p.conta, MAX_LEN), parseValor(p.valor)];
   sh.getRange(linha, col, 1, 5).setValues([dados]);
   sh.getRange(linha, col).setNumberFormat('dd/mm');
   sh.getRange(linha, col + 4).setNumberFormat('#,##0.00');
@@ -112,12 +116,15 @@ function acaoAdicionar(ss, p) {
 }
 
 function acaoAtualizar(ss, p) {
+  var err = primeiroErro(p);
+  if (err) return { ok: false, erro: err };
+  var linha = Number(p.linha);
+  if (!linha || linha < LINHA_DADOS) return { ok: false, erro: 'Linha inválida.' };
   var sh = ss.getSheetByName(p.mes);
   if (!sh) return { ok: false, erro: 'A aba "' + p.mes + '" não existe.' };
   var col = (p.tipo === 'saida') ? 7 : 1;
-  var linha = Number(p.linha);
-  if (!linha || linha < LINHA_DADOS) return { ok: false, erro: 'Linha inválida.' };
-  var dados = [parseData(p.data), p.descricao, p.categoria, p.conta, parseValor(p.valor)];
+  var dados = [parseData(p.data), sane(p.descricao, MAX_LEN),
+               sane(p.categoria, MAX_LEN), sane(p.conta, MAX_LEN), parseValor(p.valor)];
   sh.getRange(linha, col, 1, 5).setValues([dados]);
   sh.getRange(linha, col).setNumberFormat('dd/mm');
   sh.getRange(linha, col + 4).setNumberFormat('#,##0.00');
@@ -125,16 +132,21 @@ function acaoAtualizar(ss, p) {
 }
 
 function acaoExcluir(ss, p) {
+  if (p.tipo !== 'entrada' && p.tipo !== 'saida') {
+    return { ok: false, erro: 'Tipo de lançamento inválido.' };
+  }
+  var linha = Number(p.linha);
+  if (!linha || linha < LINHA_DADOS) return { ok: false, erro: 'Linha inválida.' };
   var sh = ss.getSheetByName(p.mes);
   if (!sh) return { ok: false, erro: 'A aba "' + p.mes + '" não existe.' };
   var col = (p.tipo === 'saida') ? 7 : 1;
-  var linha = Number(p.linha);
-  if (!linha || linha < LINHA_DADOS) return { ok: false, erro: 'Linha inválida.' };
   sh.getRange(linha, col, 1, 5).clearContent();
   return { ok: true };
 }
 
 function acaoNovoMes(ss, mes) {
+  if (!mes) return { ok: false, erro: 'Informe o nome do mês.' };
+  mes = sane(String(mes), 40);
   if (!mes) return { ok: false, erro: 'Informe o nome do mês.' };
   mes = mes.charAt(0).toUpperCase() + mes.slice(1);
   if (ss.getSheetByName(mes)) return { ok: true, criado: false, mes: mes };
@@ -190,6 +202,42 @@ function acaoOpcoes(ss) {
     categorias: Object.keys(cats).sort(),
     contas: Object.keys(contas).sort()
   };
+}
+
+// ------------------------------------------------------------------ validação
+var MAX_LEN = 120; // tamanho máximo para textos livres (descrição, categoria, conta)
+
+// Remove espaços das pontas e limita o tamanho (evita células/abas gigantes).
+function sane(s, maxLen) {
+  if (s == null) return '';
+  var t = String(s).trim();
+  if (maxLen && t.length > maxLen) t = t.slice(0, maxLen);
+  return t;
+}
+
+// Confere se a data informada é realmente válida (o parseData "perdoa" demais).
+function dataValida(s) {
+  if (s == null || String(s).trim() === '') return false;
+  var m = String(s).match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) {
+    var a = +m[1], b = +m[2], c = +m[3];
+    if (b < 1 || b > 12 || c < 1 || c > 31) return false;
+    var dt = new Date(a, b - 1, c);
+    return dt.getFullYear() === a && dt.getMonth() === b - 1 && dt.getDate() === c;
+  }
+  var d = new Date(s);
+  return !isNaN(d.getTime());
+}
+
+// Primeiro erro de um lançamento (adicionar/atualizar) ou null se estiver ok.
+function primeiroErro(p) {
+  if (p.tipo !== 'entrada' && p.tipo !== 'saida') return 'Tipo de lançamento inválido.';
+  if (!p.mes) return 'Informe o mês.';
+  if (!sane(p.descricao, MAX_LEN)) return 'Informe a descrição.';
+  if (!dataValida(p.data)) return 'Data inválida.';
+  var valor = parseValor(p.valor);
+  if (!isFinite(valor) || valor <= 0) return 'Valor inválido (use ex.: 123,45).';
+  return null;
 }
 
 // ------------------------------------------------------------------- utilitários

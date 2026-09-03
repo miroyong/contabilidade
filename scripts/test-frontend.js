@@ -37,40 +37,63 @@ global.document = {
   querySelectorAll: () => [],
   querySelector: (sel) => makeEl(sel),
 };
-global.window = { APP_CONFIG: { APPS_SCRIPT_URL: 'https://mock/exec', APP_KEY: 'cf-2026-k3x9pQ7mZt' } };
+global.window = { APP_CONFIG: { SUPABASE_URL: 'https://mock.supabase.co', SUPABASE_ANON_KEY: 'chave-anon' } };
 global.requestAnimationFrame = (fn) => fn();
 global.confirm = () => true;
 global.prompt = () => 'Setembro';
 global.Intl = Intl;
 
-// ---------- fetch mock: responde como o Apps Script ----------
-const LANCAMENTOS = {
-  ok: true, existe: true, mes: 'Agosto',
-  entradas: [
-    { linha: 7, data: '2026-08-01', descricao: 'Salário', categoria: 'Salário', conta: 'Banco do Brasil', valor: 2500 },
-    { linha: 9, data: '2026-08-15', descricao: 'Freela', categoria: 'Serviços', conta: 'Nubank', valor: 300 }
-  ],
-  saidas: [
-    { linha: 7, data: '2026-08-02', descricao: 'Supermercado', categoria: 'Alimentação', conta: 'Cartão de Crédito', valor: 500 },
-    { linha: 8, data: '2026-08-10', descricao: 'Aluguel', categoria: 'Moradia', conta: 'Banco do Brasil', valor: 1200 }
-  ],
-  totais: { entradas: 2800, saidas: 1700, balanco: 1100 }
-};
-const MESES = { ok: true, meses: ['Agosto', 'Setembro'], mesAtual: 'Agosto' };
-const OPCOES = { ok: true, categorias: ['Salário', 'Serviços', 'Alimentação', 'Moradia'], contas: ['Banco do Brasil', 'Nubank', 'Cartão de Crédito'] };
+// ---------- mês "corrente" (determinístico em qualquer data de execução) ----
+const pad2 = (n) => ('0' + n).slice(-2);
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+const agora = new Date();
+const ano = agora.getFullYear();
+const mesNum = agora.getMonth() + 1;
+const curId = ano + '-' + pad2(mesNum);
+// segundo mês sempre no MESMO ano (evita sufixo "/ano" nos chips)
+const outroMesNum = mesNum === 1 ? 2 : (mesNum === 12 ? 11 : mesNum + 1);
+const outroId = ano + '-' + pad2(outroMesNum);
+const curLabel = cap(agora.toLocaleDateString('pt-BR', { month: 'long' }));
+const outroLabel = cap(new Date(ano, outroMesNum - 1, 1).toLocaleDateString('pt-BR', { month: 'long' }));
 
-global.fetch = (url, opts) => {
-  const corpo = JSON.parse(opts.body);
-  let res;
-  if (corpo.action === 'meses') res = MESES;
-  else if (corpo.action === 'opcoes') res = OPCOES;
-  else if (corpo.action === 'lancamentos') res = LANCAMENTOS;
-  else res = { ok: true };
-  return Promise.resolve({ json: () => Promise.resolve(res) });
+// ---------- fetch mock: responde como o PostgREST do Supabase --------------
+const LANC = [
+  { id: 'aaaa1111', tipo: 'entrada', data: curId + '-01', descricao: 'Salário', categoria: 'Salário', conta: 'Banco do Brasil', valor: 2500 },
+  { id: 'bbbb2222', tipo: 'entrada', data: curId + '-15', descricao: 'Freela', categoria: 'Serviços', conta: 'Nubank', valor: 300 },
+  { id: 'cccc3333', tipo: 'saida', data: curId + '-02', descricao: 'Supermercado', categoria: 'Alimentação', conta: 'Cartão de Crédito', valor: 500 },
+  { id: 'dddd4444', tipo: 'saida', data: curId + '-10', descricao: 'Aluguel', categoria: 'Moradia', conta: 'Banco do Brasil', valor: 1200 }
+];
+const OP_ROWS = [
+  { categoria: 'Salário', conta: 'Banco do Brasil' },
+  { categoria: 'Serviços', conta: 'Nubank' },
+  { categoria: 'Alimentação', conta: 'Cartão de Crédito' },
+  { categoria: 'Moradia', conta: 'Banco do Brasil' }
+];
+
+function okJson(body) {
+  return { ok: true, status: 200, text: () => Promise.resolve(body === null ? '' : JSON.stringify(body)) };
+}
+
+global.fetch = (url) => {
+  const u = new URL(url);
+  const table = (u.pathname.match(/\/rest\/v1\/(\w+)/) || [])[1] || '';
+  const q = u.searchParams;
+  if (table === 'meses') {
+    if (q.has('id')) { // verificação de existência do mês
+      const id = q.get('id').replace(/^eq\./, '');
+      return Promise.resolve(okJson(id === curId ? [{ id: curId }] : []));
+    }
+    return Promise.resolve(okJson([{ id: curId }, { id: outroId }])); // order=id.desc
+  }
+  if (table === 'lancamentos') {
+    if (q.get('select') === 'categoria,conta') return Promise.resolve(okJson(OP_ROWS));
+    const mes = (q.get('mes_id') || '').replace(/^eq\./, '');
+    return Promise.resolve(okJson(mes === curId ? LANC : []));
+  }
+  return Promise.resolve(okJson([]));
 };
 
 // ---------- carrega e executa o app ----------
-global.window.APP_CONFIG = global.window.APP_CONFIG;
 const appJs = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
 eval(appJs);
 
@@ -79,14 +102,14 @@ const assert = require('assert');
 const norm = (s) => String(s).replace(/\u00A0/g, ' '); // NBSP → espaço normal
 
 setTimeout(() => {
-  assert.strictEqual(els['saldo-mes'].textContent, 'Agosto', 'mês selecionado');
+  assert.strictEqual(els['saldo-mes'].textContent, curLabel, 'mês selecionado');
   assert.strictEqual(norm(els['saldo-valor'].textContent), 'R$ 1.100,00', 'balanço formatado');
   assert.ok(els['saldo-valor'].className.includes('positivo'), 'classe positivo');
   assert.strictEqual(norm(els['saldo-entradas'].textContent), 'R$ 2.800,00', 'total entradas');
   assert.strictEqual(norm(els['saldo-saidas'].textContent), 'R$ 1.700,00', 'total saídas');
 
   const mesesHtml = els['meses-list'].innerHTML;
-  assert.ok(mesesHtml.includes('Agosto') && mesesHtml.includes('Setembro'), 'chips de mês');
+  assert.ok(mesesHtml.includes(curLabel) && mesesHtml.includes(outroLabel), 'chips de mês');
   assert.ok(mesesHtml.includes('chip ativo'), 'chip ativo marcado');
 
   const graficoHtml = norm(els['grafico'].innerHTML);
@@ -97,6 +120,6 @@ setTimeout(() => {
   assert.ok(listaHtml.includes('data-edit') && listaHtml.includes('data-del'), 'ações editar/excluir');
   assert.strictEqual(els['contador'].textContent, '4', 'contador de lançamentos');
 
-  console.log('✔ SMOKE TEST DO FRONT-END PASSOU (carregou, renderizou saldo/meses/gráfico/lista)');
+  console.log('✔ SMOKE TEST DO FRONT-END PASSOU (carregou e renderizou saldo/meses/gráfico/lista via Supabase)');
   process.exit(0);
 }, 300);

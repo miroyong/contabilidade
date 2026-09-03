@@ -1,40 +1,37 @@
 # Controle Financeiro 💰
 
-Aplicação web simples (HTML/CSS/JS, sem dependências) que lê e grava lançamentos
-diretamente na sua planilha Google de contabilidade.
+Aplicação web simples (HTML/CSS/JS, **sem dependências** e sem build) com
+backend no **Supabase (Postgres)**. Lançamentos, meses, totais e gráficos
+ficam no banco, acessados direto do navegador via REST (PostgREST).
 
-- Lançamento rápido de entradas e saídas (grava na aba do mês)
+- Lançamento rápido de entradas e saídas
 - Extrato com filtros (tipo, categoria, conta, busca)
 - Resumo automático: totais, balanço e gráfico de saídas por categoria
 - Editar e excluir lançamentos
-- Criação de novas abas de mês com a mesma estrutura da planilha
+- Meses criados sob demanda (sem necessidade de "aba" na planilha)
 
 ## Como funciona
 
 ```
-App web (GitHub Pages)  ──▶  Google Apps Script (Web App)  ──▶  Sua planilha
+App web (GitHub Pages) ── fetch /rest/v1 (PostgREST) ──▶ Supabase (Postgres)
 ```
 
-O navegador chama o Apps Script via fetch (JSON). O script lê/escreve nas abas
-mensais (Agosto, Setembro, …). Cada aba tem duas tabelas lado a lado:
+O navegador fala direto com a API REST do Supabase usando a chave pública
+**anon**. O schema está em `supabase/schema.sql`:
 
-- ENTRADAS: colunas A–E (Data, Descrição, Categoria, Conta, Valor)
-- SAÍDAS:   colunas G–K (Data, Descrição, Categoria, Conta, Valor)
+- **`meses`** — `id "YYYY-MM"` (ex.: `2026-08`), criado pelo usuário
+- **`lancamentos`** — uma linha por lançamento:
+  `tipo` (entrada/saida), `data`, `descricao`, `categoria`, `conta`, `valor`
 
-## Passo 1 — Instalar o Apps Script (1 vez)
+## Passo 1 — Criar o banco (1 vez)
 
-1. Abra a planilha:
-   https://docs.google.com/spreadsheets/d/1jp7hBdUXn5ZmgxVM8UwZFqLB7B4mT8Irmm3EYGwM9Ns
-2. Menu **Extensões → Apps Script**
-3. Apague o conteúdo e cole todo o arquivo `apps-script/Code.gs`
-4. Clique em **Implantar → Nova implantação**
-   - Tipo: **Aplicativo da web**
-   - Descrição: `controle financeiro`
-   - **Executar como:** `Eu`
-   - **Quem tem acesso:** `Qualquer pessoa`
-   - Clique em **Implantar** e autorize (a tela de permissão pode avisar que o
-     app não é verificado — escolha "Avançado → Acessar ...")
-5. Copie a **URL do aplicativo da web** (termina em `/exec`)
+1. No [Supabase Dashboard](https://supabase.com/dashboard), crie/abra o projeto.
+2. **SQL Editor** → cole o conteúdo de `supabase/schema.sql` → **Run**.
+   Cria as tabelas, índices e políticas RLS (é idempotente).
+3. Em **Project Settings → API**, copie:
+   - **Project URL** (ex.: `https://abcdefgh.supabase.co`)
+   - **anon public** (a chave `anon` — ela é pública mesmo; a proteção real
+     é o RLS, que pode ser apertado para exigir login depois)
 
 ## Passo 2 — Configurar o site
 
@@ -42,23 +39,14 @@ Edite `config.js` e preencha:
 
 ```js
 window.APP_CONFIG = {
-  APPS_SCRIPT_URL: "https://script.google.com/macros/s/SEU_ID/exec",
-  APP_KEY: "cf-2026-k3x9pQ7mZt"
+  SUPABASE_URL: "https://SEU_PROJETO.supabase.co",
+  SUPABASE_ANON_KEY: "sua-chave-anon-publica"
 };
 ```
-
-A `APP_KEY` deve ser igual ao `APP_KEY` do `Code.gs` (é uma proteção simples
-contra uso indevido da URL pública — pode trocar nos dois lugares).
-
-> ⚠️ Depois de **mudar qualquer coisa no Code.gs**, vá em
-> Implantar → Gerenciar implantações → ✏️ (lápis) → **Nova versão** → Implantar.
-> O `/exec` serve a versão fixada no deploy — rodar pelo editor não publica.
 
 ## Passo 3 — Publicar no GitHub Pages
 
 ```bash
-cd ~/contabilidade
-git init && git add -A && git commit -m "Controle financeiro"
 gh repo create contabilidade --public --source . --push
 gh api -X POST repos/miroyong/contabilidade/pages \
   -f 'source[branch]=main' -f 'source[path]=/'
@@ -69,23 +57,50 @@ O site fica em: https://miroyong.github.io/contabilidade/
 ## Uso
 
 - **＋ Novo lançamento**: escolha Entrada/Saída, preencha e Salvar.
-  Data aceita dd/mm/aaaa; valor aceita `1.234,56` ou `1234.56`.
-- **Chips de mês**: alternam entre as abas da planilha.
-- **＋ (criar mês)**: cria uma nova aba com títulos, cabeçalhos e fórmulas
-  iguais às existentes (BALANÇO, TOTAIS, formatação).
-- **✏️ / 🗑️**: editar ou excluir um lançamento.
-- Os totais mostrados no app são calculados a partir dos lançamentos; a
-  planilha mantém as próprias fórmulas (BALANÇO, TOTAL DE ENTRADAS/SAÍDAS).
+  Valor aceita `1.234,56` ou `1234.56`.
+- **Chips de mês**: alternam entre os meses (id `YYYY-MM`, rótulo em pt-BR).
+- **＋ (criar mês)**: cria um mês — digite ex.: `Setembro` ou `Setembro 2026`
+  (sem ano, usa o ano corrente).
+- **✏️ / 🗑️**: editar ou excluir um lançamento (identificado por `uuid`).
+- Os totais do app são calculados a partir dos lançamentos carregados.
+
+## Migrando da planilha Google (legado)
+
+A versão antiga usava Google Sheets + Apps Script. O `apps-script/Code.gs`
+continua no repositório **só como referência** (não é mais usado). Para
+reaproveitar os dados: exporte cada aba do mês como CSV e importe no
+Table Editor do Supabase, ou use os `INSERT`s de exemplo no fim de
+`supabase/schema.sql`.
 
 ## Estrutura do projeto
 
 ```
 contabilidade/
-├── index.html        # página principal
-├── style.css         # estilo (mobile-first)
-├── app.js            # lógica do app
-├── config.js         # URL do Apps Script + chave (PREENCHER)
+├── index.html            # página principal
+├── style.css             # estilo (mobile-first)
+├── app.js                # lógica do app (fala com Supabase via fetch)
+├── config.js             # SUPABASE_URL + SUPABASE_ANON_KEY (PREENCHER)
+├── supabase/
+│   └── schema.sql        # tabelas meses/lancamentos + RLS (rodar no SQL Editor)
 ├── apps-script/
-│   └── Code.gs       # backend a colar na planilha
+│   └── Code.gs           # [legado] backend antigo do Google Sheets (não usar)
+├── scripts/
+│   ├── test-backend.js   # testes da lógica pura do Code.gs (legado)
+│   └── test-frontend.js  # smoke test do app.js com PostgREST mockado
+├── .github/workflows/
+│   └── ci.yml            # CI: roda os testes a cada push
 └── README.md
 ```
+
+## Testes e CI
+
+Os testes não precisam de dependências — só Node:
+
+```bash
+node scripts/test-backend.js    # lógica pura do Code.gs (legado)
+node scripts/test-frontend.js   # carrega o app com PostgREST mockado e checa o render
+```
+
+O GitHub Actions (`.github/workflows/ci.yml`) roda os dois automaticamente em
+todo `push`/`pull request`.
+
