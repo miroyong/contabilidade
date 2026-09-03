@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon.svg">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=32">
+<link rel="stylesheet" href="style.css?v=33">
 </head>
 <body>
 
@@ -140,6 +140,7 @@
   <!-- Ações e filtros -->
   <section class="acoes">
     <button class="btn-primario" id="btn-novo">＋ Novo lançamento</button>
+    <button type="button" class="btn-nfc" id="btn-nfc" title="Ler QR-code do cupom (NFC-e)">🧾 Ler NFC-e do cupom</button>
     <div class="filtros">
       <select id="filtro-tipo">
         <option value="todos">Entradas e saídas</option>
@@ -164,6 +165,25 @@
     <div id="lista"></div>
   </section>
 </main>
+
+<!-- Modal NFC-e (ler cupom pelo QR do Ministério da Fazenda/SEFAZ) -->
+<dialog id="modal-nfce">
+  <form id="form-nfce" novalidate>
+    <h3>🧾 Ler cupom (NFC-e)</h3>
+    <p class="nfc-dica">No cupom, abra o <b>QR-code</b> com a câmera do celular: ele vira um link
+      (<code>https://…/qrcode?p=…</code>). Copie e cole aqui — o app preenche o lançamento com o total.</p>
+    <label>Link do QR (ou código "p=…")
+      <input type="text" id="nfc-url" placeholder="https://www.sefaz…/qrcode?p=…" autocomplete="off" spellcheck="false">
+    </label>
+    <div id="nfc-status" class="nfc-status" hidden></div>
+    <div id="nfc-result" class="nfc-result" hidden></div>
+    <div class="modal-acoes">
+      <button type="button" class="btn-secundario" id="nfc-fechar">Fechar</button>
+      <button type="submit" class="btn-primario" id="nfc-buscar">🔍 Buscar cupom</button>
+    </div>
+    <button type="button" class="btn-primario" id="nfc-usar" hidden>📝 Usar no lançamento</button>
+  </form>
+</dialog>
 
 <!-- Modal de lançamento -->
 <dialog id="modal">
@@ -212,12 +232,12 @@
 
 <div id="toast" class="toast" hidden></div>
 
-<script src="config.js?v=32"></script>
-<script src="app.js?v=32"></script>
+<script src="config.js?v=33"></script>
+<script src="app.js?v=33"></script>
 <script>
   // Registra o service worker (PWA) — falha silenciosa se não suportado/Https.
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js?v=32').catch(function () {});
+    navigator.serviceWorker.register('service-worker.js?v=33').catch(function () {});
   }
 </script>
 </body>

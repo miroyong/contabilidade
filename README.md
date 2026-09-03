@@ -74,6 +74,21 @@ assets para forçar atualização nos dispositivos.
 - **Offline**: a 2ª abertura renderiza do cache local; as ações confirmam só
   quando o servidor responde (sem "fantasma" de lançamento).
 
+## Ler cupom (NFC-e) 🧾
+
+O botão **"Ler NFC-e do cupom"** deixa lançar compras mais rápido: você cola o
+link que aparece no QR-code do cupom fiscal (NFC-e do Ministério da Fazenda /
+SEFAZ) e o app **pré-preenche o lançamento** com o total, data e loja.
+
+- Como funciona: o QR aponta para a página de consulta pública da SEFAZ com o
+  parâmetro `p`. Uma **Edge Function** (`supabase/functions/nfce`) decodifica o
+  `p` (total/data/chave — sem depender da SEFAZ) e, quando consegue, busca
+  emitente e itens na página.
+- A função está publicada no Supabase (`/functions/v1/nfce`, auth por anon).
+- ⚠️ A consulta dos **itens/emitente** é *best-effort*: varia por estado e a
+  SEFAZ pode bloquear (CAPTCHA). O **total sempre** é obtido do próprio QR.
+  Se um cupom seu não detalhar, me mande a URL que eu ajusto o parser.
+
 ## Migrando da planilha Google (legado)
 
 A versão anterior gravava numa planilha via Apps Script. O `apps-script/`

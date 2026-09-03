@@ -1,0 +1,7 @@
+{
+  "name": "nfce",
+  "version": "0.1.0",
+  "imports": {
+    "@supabase/functions-js/edge-runtime.d.ts": "jsr:@supabase/functions-js/edge-runtime.d.ts"
+  }
+}
