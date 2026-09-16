@@ -19,8 +19,11 @@
     contas: [],
     filtro: { tipo: 'todos', categoria: '', conta: '', busca: '' },
     editando: null,     // { tipo: 'entrada'|'saida', linha: N }
-    salvando: false     // trava toque duplo no salvar (evita duplicar)
+    salvando: false,    // trava toque duplo no salvar (evita duplicar)
+    limiteLista: 15     // quantos lançamentos o extrato mostra por vez
   };
+
+  var LISTA_INICIAL = 15; // evita rolar centenas de itens de uma vez
 
   var $ = function (id) { return document.getElementById(id); };
 
@@ -546,11 +549,26 @@
     $('contador').textContent = todos.length;
     var box = $('lista');
     if (!todos.length) {
-      box.innerHTML = '<div class="vazio">Nenhum lançamento encontrado.</div>';
+      var temFiltro = f.tipo !== 'todos' || f.categoria || f.conta || f.busca;
+      box.innerHTML = '<div class="vazio">' +
+        (temFiltro ? 'Nenhum lançamento encontrado com esses filtros.'
+                   : 'Nenhum lançamento neste mês ainda.') +
+        (temFiltro ? '<button class="btn-ver-mais" data-limpar-filtros type="button">Limpar filtros</button>' : '') +
+        '</div>';
+      var btnLimpar = box.querySelector('[data-limpar-filtros]');
+      if (btnLimpar) {
+        btnLimpar.addEventListener('click', function () {
+          limparFiltros();
+          renderLista();
+        });
+      }
       return;
     }
 
-    box.innerHTML = todos.map(function (l) {
+    var visiveis = todos.slice(0, state.limiteLista);
+    var restantes = todos.length - visiveis.length;
+
+    box.innerHTML = visiveis.map(function (l) {
       var tipo = l._tipo;
       var marcado = (tipo === 'saida' && temTogglePago(l) && l.descricao.indexOf('✓') === 0);
       var acoes = '<button class="btn-icone" data-edit="' + tipo + ':' + l.linha + '" title="Editar">✏️</button>' +
@@ -569,6 +587,28 @@
         '<div class="lanc-det">' + esc(l.categoria || '—') + ' · ' + esc(l.conta || '—') + '</div>' +
       '</div>';
     }).join('');
+
+    if (restantes > 0) {
+      box.innerHTML += '<button class="btn-ver-mais" data-ver-mais type="button">Mostrar todos os ' +
+        todos.length + ' lançamentos ↓</button>';
+    } else if (state.limiteLista > LISTA_INICIAL) {
+      box.innerHTML += '<button class="btn-ver-mais" data-ver-menos type="button">Mostrar menos ↑</button>';
+    }
+
+    var btnVerMais = box.querySelector('[data-ver-mais]');
+    if (btnVerMais) {
+      btnVerMais.addEventListener('click', function () {
+        state.limiteLista = todos.length;
+        renderLista();
+      });
+    }
+    var btnVerMenos = box.querySelector('[data-ver-menos]');
+    if (btnVerMenos) {
+      btnVerMenos.addEventListener('click', function () {
+        state.limiteLista = LISTA_INICIAL;
+        renderLista();
+      });
+    }
 
     Array.prototype.forEach.call(box.querySelectorAll('[data-edit]'), function (b) {
       b.addEventListener('click', function () {
@@ -703,6 +743,7 @@
 
   function limparFiltros() {
     state.filtro = { tipo: 'todos', categoria: '', conta: '', busca: '' };
+    state.limiteLista = LISTA_INICIAL;
     $('filtro-tipo').value = 'todos';
     $('filtro-busca').value = '';
   }
@@ -991,7 +1032,7 @@
   }
 
   // ------------------------------------------------------------ eventos
-  $('btn-novo').addEventListener('click', function () {
+  function novoLancamento() {
     if (!state.existe && !state.meses.length) {
       toast('Crie a aba do mês primeiro (botão ＋).');
       return;
@@ -1002,7 +1043,10 @@
       return;
     }
     abrirModal('novo', null, null);
-  });
+  }
+
+  $('btn-novo').addEventListener('click', novoLancamento);
+  $('btn-novo-fab').addEventListener('click', novoLancamento);
 
   $('btn-novo-mes').addEventListener('click', function () {
     var nome = prompt('Nome do mês (ex.: Janeiro, Fevereiro…):');
@@ -1078,12 +1122,14 @@
       state.filtro.tipo = $('filtro-tipo').value;
       state.filtro.categoria = $('filtro-categoria').value;
       state.filtro.conta = $('filtro-conta').value;
+      state.limiteLista = LISTA_INICIAL; // filtro novo volta ao começo da lista
       renderLista();
     });
   });
 
   $('filtro-busca').addEventListener('input', function () {
     state.filtro.busca = this.value;
+    state.limiteLista = LISTA_INICIAL;
     renderLista();
   });
 
@@ -1148,6 +1194,8 @@
       if (s.id === 'chaveiros-section') s.hidden = (viz !== 'cha');
       else s.style.display = (viz === 'cha') ? 'none' : '';
     });
+    // na Arrecadação o lançamento é feito pelo próprio formulário da aba
+    $('btn-novo-fab').hidden = (viz === 'cha');
   }
 
   function chaCalcular() {

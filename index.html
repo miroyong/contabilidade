@@ -13,19 +13,24 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon.svg">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=47">
+<link rel="stylesheet" href="style.css?v=49">
 </head>
 <body>
 
 <header class="topo">
-  <h1>💰 Controle Financeiro</h1>
-  <span id="sync-status" class="sync-status" hidden></span>
-  <div class="topo-acoes">
-    <button id="btn-tema" class="btn-tema" type="button" title="Alternar tema">🌙</button>
+  <div class="topo-linha">
+    <h1>💰 Controle Financeiro</h1>
+    <span id="sync-status" class="sync-status" role="status" aria-live="polite" hidden></span>
+    <button id="btn-tema" class="btn-tema" type="button" title="Alternar tema" aria-label="Alternar tema">🌙</button>
+  </div>
+  <!-- seletor de mês: fica fixo no topo porque define o contexto de tudo abaixo -->
+  <div class="meses" id="meses-barra">
+    <div class="meses-list" id="meses-list"></div>
+    <button class="btn-mes-novo" id="btn-novo-mes" type="button" title="Criar aba de mês" aria-label="Criar aba de mês">＋</button>
   </div>
 </header>
 
-<nav class="visualizacao" id="viz">
+<nav class="visualizacao" id="viz" aria-label="Seções do app">
   <button type="button" class="viz-btn ativo" data-viz="fin">💼 Financeiro</button>
   <button type="button" class="viz-btn" data-viz="cha">🪙 Arrecadação</button>
 </nav>
@@ -96,6 +101,7 @@
     ⚠️ SUPABASE_URL / SUPABASE_ANON_KEY ainda não configurados no <code>config.js</code>.
     Veja o README.md (Passo 1) para configurar.
   </div>
+  <div id="aviso-mes" class="aviso" hidden></div>
 
   <!-- Cartão de saldo -->
   <section class="cartao saldo" id="saldo-card">
@@ -130,13 +136,6 @@
     <div class="comparativo" id="comparativo"></div>
   </section>
 
-  <!-- Seletor de mês -->
-  <section class="meses">
-    <div class="meses-list" id="meses-list"></div>
-    <button class="btn-mes-novo" id="btn-novo-mes" title="Criar aba de mês">＋</button>
-  </section>
-  <div id="aviso-mes" class="aviso" hidden></div>
-
   <!-- Ações e filtros -->
   <section class="acoes">
     <button class="btn-primario" id="btn-novo">＋ Novo lançamento</button>
@@ -164,6 +163,9 @@
     <div id="lista"></div>
   </section>
 </main>
+
+<!-- Ação principal sempre ao alcance do polegar (o botão do meio da página fica abaixo da dobra) -->
+<button class="fab" id="btn-novo-fab" type="button" title="Novo lançamento" aria-label="Novo lançamento">＋</button>
 
 <!-- Modal de lançamento -->
 <dialog id="modal">
@@ -201,14 +203,14 @@
   </form>
 </dialog>
 
-<div id="toast" class="toast" hidden></div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="config.js?v=47"></script>
-<script src="app.js?v=47"></script>
+<script src="config.js?v=49"></script>
+<script src="app.js?v=49"></script>
 <script>
   // Registra o service worker (PWA) — falha silenciosa se não suportado/Https.
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js?v=47').catch(function () {});
+    navigator.serviceWorker.register('service-worker.js?v=49').catch(function () {});
   }
 </script>
 </body>

@@ -263,6 +263,18 @@ setTimeout(() => {
       assert.strictEqual(els['saldo-mes'].textContent, curName,
         'app muda para o mês da data depois de lançar');
 
+      // ===== extrato paginado + botão flutuante (evita rolar centenas de itens) =====
+      assert.ok(appJs.includes('var visiveis = todos.slice(0, state.limiteLista)'),
+        'extrato renderiza só state.limiteLista lançamentos');
+      assert.ok(appJs.includes('data-ver-mais') && appJs.includes('data-ver-menos'),
+        'extrato tem "mostrar todos" / "mostrar menos" quando a lista é maior');
+      assert.ok(/state\.limiteLista = LISTA_INICIAL/.test(appJs),
+        'trocar filtro/busca volta a lista ao começo');
+      assert.ok(appJs.includes('novoLancamento') && appJs.includes("$('btn-novo-fab')"),
+        'botão flutuante dispara o mesmo novo lançamento do botão do meio da página');
+      assert.ok(appJs.includes("$('btn-novo-fab').hidden = (viz === 'cha')"),
+        'botão flutuante some na aba Arrecadação');
+
       console.log('✔ SMOKE TEST DO FRONT-END PASSOU (inclui dashboard, tema, estático e mês da arrecadação)');
       process.exit(0);
     }, 250);
