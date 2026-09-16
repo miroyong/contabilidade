@@ -369,11 +369,18 @@ main {
 .btn-primario:hover { filter: brightness(1.06); }
 .btn-primario:disabled { background: #9ca3af; box-shadow: none; cursor: not-allowed; }
 
-/* CTA fixo no rodapé (celular): lançar na rua com o polegar */
-#btn-novo { position: fixed; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 40; box-shadow: var(--shadow-lg); }
+/* CTA fixo no rodapé: permanece acessível durante a rolagem */
+#btn-novo {
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  width: min(calc(100vw - 32px), 728px);
+  transform: translateX(-50%);
+  z-index: 40;
+  box-shadow: var(--shadow-lg);
+}
 @media (min-width: 720px) {
-  #btn-novo { position: static; }
-  body { padding-bottom: 32px; }
+  body { padding-bottom: 96px; }
   .toast { bottom: 24px; }
 }
 
