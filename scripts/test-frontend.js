@@ -127,9 +127,9 @@ setTimeout(() => {
   assert.ok(els['saldo-fisico'].className.includes('negativo'), 'Físico negativo');
   assert.ok(els['saldo-pix'].className.includes('positivo'), 'Pix positivo');
 
-  // menu/menu Conta: opções restritas a Pix/Físico (datalist e filtro)
+  // menu Conta: Pix/Cartão no lançamento; legado permanece no filtro
   assert.ok(els['dl-contas'].innerHTML.includes('value="Pix"'), 'datalist Conta inclui Pix');
-  assert.ok(els['dl-contas'].innerHTML.includes('value="Físico"'), 'datalist Conta inclui Físico');
+  assert.ok(els['dl-contas'].innerHTML.includes('value="Cartão"'), 'datalist Conta inclui Cartão');
   assert.ok(!els['dl-contas'].innerHTML.includes('Banco do Brasil'), 'datalist sem contas legado');
   assert.ok(els['filtro-conta'].innerHTML.includes('"Pix"') && els['filtro-conta'].innerHTML.includes('"Físico"'),
     'filtro Conta com Pix/Físico');

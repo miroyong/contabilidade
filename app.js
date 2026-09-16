@@ -374,7 +374,7 @@
     $('dl-categorias').innerHTML = state.categorias.map(function (c) {
       return '<option value="' + esc(c) + '">';
     }).join('');
-    $('dl-contas').innerHTML = contasOpcoes().map(function (c) {
+    $('dl-contas').innerHTML = ['Pix', 'Cartão'].map(function (c) {
       return '<option value="' + esc(c) + '">';
     }).join('');
   }
@@ -902,8 +902,8 @@
       });
     }
 
-    // contas: sempre Pix/Físico
-    montar(boxConta, contasOpcoes().slice(0, 4));
+    // contas do lançamento: Pix ou Cartão
+    montar(boxConta, ['Pix', 'Cartão']);
     // categorias: mais usadas no mês primeiro; depois as demais (limite 8)
     var peso = {};
     state.entradas.concat(state.saidas).forEach(function (l) {
