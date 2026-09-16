@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon.svg">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=49">
+<link rel="stylesheet" href="style.css?v=50">
 </head>
 <body>
 
@@ -136,9 +136,8 @@
     <div class="comparativo" id="comparativo"></div>
   </section>
 
-  <!-- Ações e filtros -->
+  <!-- Filtros -->
   <section class="acoes">
-    <button class="btn-primario" id="btn-novo">＋ Novo lançamento</button>
     <div class="filtros">
       <select id="filtro-tipo">
         <option value="todos">Entradas e saídas</option>
@@ -205,12 +204,12 @@
 
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="config.js?v=49"></script>
-<script src="app.js?v=49"></script>
+<script src="config.js?v=50"></script>
+<script src="app.js?v=50"></script>
 <script>
   // Registra o service worker (PWA) — falha silenciosa se não suportado/Https.
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js?v=49').catch(function () {});
+    navigator.serviceWorker.register('service-worker.js?v=50').catch(function () {});
   }
 </script>
 </body>

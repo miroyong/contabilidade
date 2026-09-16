@@ -43,7 +43,7 @@ function boot(failServer) {
   const els = {}, byId = (id) => (els[id] || (els[id] = makeEl(id)));
   const ids = ['aviso-config', 'saldo-mes', 'saldo-valor', 'saldo-entradas', 'saldo-saidas',
     'saldo-pix', 'saldo-fisico', 'btn-planilha', 'btn-tema', 'meses-list', 'aviso-mes',
-    'btn-novo', 'filtro-tipo', 'filtro-categoria', 'filtro-conta', 'filtro-busca', 'grafico',
+    'btn-novo-fab', 'filtro-tipo', 'filtro-categoria', 'filtro-conta', 'filtro-busca', 'grafico',
     'contador', 'lista', 'modal', 'modal-titulo', 'f-data', 'f-descricao', 'f-categoria',
     'f-conta', 'f-valor', 'dl-categorias', 'chips-conta', 'btn-cancelar', 'btn-novo-mes',
     'toast', 'form-lancamento', 'btn-salvar', 'pizza-grafico', 'insights', 'sync-status'];

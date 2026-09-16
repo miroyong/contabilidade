@@ -29,7 +29,7 @@ function setup(fetchFn) {
   const els = {};
   const byId = (id) => (els[id] || (els[id] = makeEl(id)));
   const ids = ['aviso-config','saldo-mes','saldo-valor','saldo-entradas','saldo-saidas',
-    'meses-list','aviso-mes','btn-novo','filtro-tipo','filtro-categoria','filtro-conta',
+    'meses-list','aviso-mes','btn-novo-fab','filtro-tipo','filtro-categoria','filtro-conta',
     'filtro-busca','grafico','contador','lista','modal','modal-titulo','f-data',
     'f-descricao','f-categoria','f-conta','f-valor','dl-categorias','chips-conta',
     'btn-cancelar','btn-novo-mes','toast','form-lancamento','btn-salvar','sync-status'];

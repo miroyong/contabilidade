@@ -312,7 +312,7 @@
   function carregarInicio() {
     if (!SB_URL || !SB_KEY) {
       $('aviso-config').hidden = false;
-      $('btn-novo').disabled = true;
+      $('btn-novo-fab').disabled = true;
       return;
     }
     // 1) render imediato a partir do cache (nada de tela vazia)
@@ -1045,7 +1045,6 @@
     abrirModal('novo', null, null);
   }
 
-  $('btn-novo').addEventListener('click', novoLancamento);
   $('btn-novo-fab').addEventListener('click', novoLancamento);
 
   $('btn-novo-mes').addEventListener('click', function () {

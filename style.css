@@ -84,7 +84,7 @@ body {
   color: var(--text);
   line-height: 1.5;
   min-height: 100dvh;
-  padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  padding-bottom: calc(84px + env(safe-area-inset-bottom));
   -webkit-font-smoothing: antialiased;
 }
 
@@ -394,18 +394,7 @@ main {
 .btn-primario:hover { filter: brightness(1.06); }
 .btn-primario:disabled { background: #9ca3af; box-shadow: none; cursor: not-allowed; }
 
-/* CTA fixo no rodapé: permanece acessível durante a rolagem */
-#btn-novo {
-  position: fixed;
-  left: 50%;
-  bottom: calc(16px + env(safe-area-inset-bottom));
-  width: min(calc(100vw - 32px), 728px);
-  transform: translateX(-50%);
-  z-index: 40;
-  box-shadow: var(--shadow-lg);
-}
 @media (min-width: 720px) {
-  body { padding-bottom: 96px; }
   .toast { bottom: 24px; }
 }
 
@@ -422,7 +411,7 @@ main {
   appearance: none;
 }
 .filtros select:focus-visible, .filtros input:focus-visible,
-#btn-novo:focus-visible, .btn-tema:focus-visible, .chip:focus-visible,
+.btn-tema:focus-visible, .chip:focus-visible,
 .btn-mes-novo:focus-visible, .viz-btn:focus-visible, .btn-icone:focus-visible,
 .chip-rapido:focus-visible, .tipo-btn:focus-visible, .cha-tipo-btn:focus-visible,
 .btn-primario:focus-visible, .btn-secundario:focus-visible, .btn-ver-mais:focus-visible {
@@ -615,8 +604,10 @@ dialog::backdrop { background: rgba(2, 6, 23, .55); backdrop-filter: blur(3px); 
   transition: transform .15s;
 }
 .fab:active { transform: scale(.92); }
+.fab:disabled { background: #9ca3af; box-shadow: none; cursor: not-allowed; }
 .fab:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
-@media (min-width: 720px) { .fab { right: calc(50vw - 380px + 16px); } }
+/* alinha o FAB à borda direita do conteúdo (main = 760px, padding 16px) */
+@media (min-width: 760px) { .fab { right: calc(50vw - 364px); } }
 
 /* ---------- toast ---------- */
 .toast {

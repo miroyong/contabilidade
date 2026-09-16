@@ -29,7 +29,7 @@ const els = {};
 const byId = (id) => (els[id] || (els[id] = makeEl(id)));
 const ids = ['aviso-config', 'saldo-mes', 'saldo-valor', 'saldo-entradas', 'saldo-saidas',
   'saldo-pix', 'saldo-fisico', 'btn-planilha', 'btn-tema',
-  'meses-list', 'aviso-mes', 'btn-novo', 'filtro-tipo', 'filtro-categoria', 'filtro-conta',
+  'meses-list', 'aviso-mes', 'btn-novo-fab', 'filtro-tipo', 'filtro-categoria', 'filtro-conta',
   'filtro-busca', 'grafico', 'contador', 'lista', 'modal', 'modal-titulo', 'f-data',
   'f-descricao', 'f-categoria', 'f-conta', 'f-valor', 'dl-categorias', 'chips-conta',
   'btn-cancelar', 'btn-novo-mes', 'toast', 'form-lancamento', 'btn-salvar'];
@@ -113,6 +113,7 @@ global.fetch = (url, opts) => {
 // ---------- carrega e executa o app ----------
 global.window.APP_CONFIG = global.window.APP_CONFIG;
 const appJs = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 // pré-carga: "levou" já salvo em localStorage (estoque do mosquetão do dia anterior)
 memStore['cf_chaLevou'] = JSON.stringify({ '3d': 30, '2d': 20, 'ab': 5 });
 eval(appJs);
@@ -271,9 +272,11 @@ setTimeout(() => {
       assert.ok(/state\.limiteLista = LISTA_INICIAL/.test(appJs),
         'trocar filtro/busca volta a lista ao começo');
       assert.ok(appJs.includes('novoLancamento') && appJs.includes("$('btn-novo-fab')"),
-        'botão flutuante dispara o mesmo novo lançamento do botão do meio da página');
+        'botão flutuante é o único CTA de novo lançamento');
       assert.ok(appJs.includes("$('btn-novo-fab').hidden = (viz === 'cha')"),
         'botão flutuante some na aba Arrecadação');
+      assert.ok(!indexHtml.includes('id="btn-novo"') && !/['"]btn-novo['"]/.test(appJs),
+        'barra fixa "#btn-novo" removida do HTML e do JS (só resta o botão circular)');
 
       console.log('✔ SMOKE TEST DO FRONT-END PASSOU (inclui dashboard, tema, estático e mês da arrecadação)');
       process.exit(0);
