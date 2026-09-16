@@ -267,22 +267,19 @@
     return isNaN(n) ? 0 : n;
   }
 
-  function normalizarValorInput(input) {
-    var valor = String(input.value || '').replace(/R\$/gi, '').replace(/\s/g, '');
-    if (valor.indexOf(',') >= 0) valor = valor.replace(/\./g, '');
-    else valor = valor.replace(/\./g, ',');
-    valor = valor.replace(/[^\d,]/g, '');
-    var partes = valor.split(',');
-    input.value = partes.length > 1 ? partes.shift() + ',' + partes.join('') : valor;
+  function renderValorMascara(input) {
+    var digitos = input._valorDigitos || '';
+    if (!digitos) { input.value = ''; return; }
+    digitos = digitos.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+    var centavos = digitos.padStart(3, '0');
+    var inteiro = centavos.slice(0, -2) || '0';
+    input.value = inteiro + ',' + centavos.slice(-2);
   }
 
-  function formatarValorInput(input) {
-    normalizarValorInput(input);
-    if (!input.value) return;
-    input.value = parseValor(input.value).toLocaleString('pt-BR', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    });
+  function prepararValorInput(input) {
+    var valor = String(input.value || '').trim();
+    input._valorDigitos = valor ? String(Math.round(parseValor(valor) * 100)) : '';
+    renderValorMascara(input);
   }
 
   function esc(s) {
@@ -1025,8 +1022,34 @@
   });
 
   document.querySelectorAll('.campo-valor').forEach(function (input) {
-    input.addEventListener('input', function () { normalizarValorInput(input); });
-    input.addEventListener('blur', function () { formatarValorInput(input); });
+    input.addEventListener('focus', function () {
+      prepararValorInput(input);
+      input.select();
+      input._valorSelecionado = true;
+    });
+    input.addEventListener('keydown', function (e) {
+      if (/^\d$/.test(e.key)) {
+        e.preventDefault();
+        if (input._valorSelecionado) input._valorDigitos = '';
+        input._valorSelecionado = false;
+        input._valorDigitos = (input._valorDigitos || '') + e.key;
+        renderValorMascara(input);
+      } else if (e.key === 'Backspace' || e.key === 'Delete') {
+        e.preventDefault();
+        input._valorSelecionado = false;
+        input._valorDigitos = (input._valorDigitos || '').slice(0, -1);
+        renderValorMascara(input);
+      } else if (e.key === '.' || e.key === ',') {
+        e.preventDefault();
+      }
+    });
+    input.addEventListener('paste', function () {
+      setTimeout(function () {
+        input._valorDigitos = input.value.replace(/\D/g, '');
+        input._valorSelecionado = false;
+        renderValorMascara(input);
+      }, 0);
+    });
   });
 
   ['filtro-tipo', 'filtro-categoria', 'filtro-conta'].forEach(function (id) {
