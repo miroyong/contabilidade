@@ -785,8 +785,7 @@
       }
       salvarCacheMes();
       renderTudo();
-      toast(eraEdicao ? 'Atualizado!' : (dados.recorrente ? 'Adicionado! Criando próximos meses…' : 'Adicionado!'));
-      if (dados.recorrente && !eraEdicao) criarRecorrentes(dados, dados.recorrenteMeses);
+      toast(eraEdicao ? 'Atualizado!' : 'Adicionado!');
     }).catch(function (e) {
       syncStatus(false);
       state.salvando = false;
@@ -859,56 +858,6 @@
     });
   }
 
-  // ------------------------------------------------------------ lançamento recorrente
-  function proximosMeses(qtd, diaRef) {
-    var hoje = new Date();
-    var dia = Math.max(1, Math.min(parseInt(diaRef, 10) || hoje.getDate(), 28));
-    var out = [];
-    for (var i = 1; i <= qtd; i++) {
-      var d = new Date(hoje.getFullYear(), hoje.getMonth() + i, 1);
-      var ult = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-      var dc = Math.min(dia, ult);
-      var data = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + dc).slice(-2);
-      var nome = d.toLocaleDateString('pt-BR', { month: 'long' });
-      nome = nome.charAt(0).toUpperCase() + nome.slice(1);
-      out.push({ mes: nome, data: data });
-    }
-    return out;
-  }
-
-  function criarRecorrentes(dados, qtd) {
-    var meses = proximosMeses(qtd, dados.data ? dados.data.slice(8, 10) : null);
-    var i = 0;
-    var sucesso = 0;
-    (function proximo() {
-      if (i >= meses.length) {
-        syncStatus(false);
-        toast(sucesso > 0 ? 'Recorrente criado em ' + sucesso + ' mês(es)!' : 'Nada criado.');
-        return;
-      }
-      var m = meses[i++];
-      syncStatus(true, 'criando ' + m.mes + '…');
-      chamar('novoMes', { mes: m.mes })
-        .then(function (r) {
-          if (!r.ok) throw new Error(m.mes + ': ' + r.erro);
-          return chamar('adicionar', {
-            mes: m.mes, tipo: dados.tipo, data: m.data,
-            descricao: dados.descricao, categoria: dados.categoria,
-            conta: dados.conta, valor: dados.valor
-          });
-        })
-        .then(function (r) {
-          if (!r.ok) throw new Error(m.mes + ': ' + r.erro);
-          sucesso++;
-          proximo();
-        })
-        .catch(function (e) {
-          syncStatus(false);
-          toast('Erro ao criar ' + m.mes + ': ' + e.message);
-        });
-    })();
-  }
-
   // ------------------------------------------------------------ modal
 
   // ---- atalhos "1 toque": preenche Conta/Categoria sem digitar ----
@@ -965,11 +914,7 @@
     $('f-categoria').value = '';
     $('f-conta').value = '';
     $('f-valor').value = '';
-    $('f-recorrente').checked = false;
-    $('f-recorrente-wrap').hidden = true;
-    $('f-recorrente-meses').value = 12;
-
-    setTipo(tipo || 'entrada');
+    setTipo(tipo || 'saida');
     $('modal-titulo').textContent = 'Novo lançamento';
 
     if (modo === 'editar') {
@@ -1045,9 +990,7 @@
       descricao: $('f-descricao').value.trim(),
       categoria: $('f-categoria').value.trim(),
       conta: $('f-conta').value.trim(),
-      valor: valor,
-      recorrente: $('f-recorrente').checked,
-      recorrenteMeses: parseInt($('f-recorrente-meses').value, 10) || 12
+      valor: valor
     };
     if (!dados.data) { toast('Informe a data.'); return; }
     if (!dados.descricao) { toast('Informe a descrição.'); return; }
@@ -1071,10 +1014,6 @@
 
   $('btn-tema').addEventListener('click', function () {
     aplicarTema(document.documentElement.dataset.tema === 'escuro' ? 'claro' : 'escuro');
-  });
-
-  $('f-recorrente').addEventListener('change', function () {
-    $('f-recorrente-wrap').hidden = !this.checked;
   });
 
   // ------------------------------------------------------------ aba Arrecadação

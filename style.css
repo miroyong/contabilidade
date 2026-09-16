@@ -519,22 +519,6 @@ dialog::backdrop { background: rgba(2, 6, 23, .55); backdrop-filter: blur(3px); 
 .chip-rapido:active { transform: scale(.94); }
 .chip-rapido.ativo { background: var(--primary-soft); border-color: var(--primary); color: var(--primary-strong); }
 
-/* recorrente */
-.recorrente-linha {
-  flex-direction: row !important;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 8px;
-  font-size: .86rem !important;
-  text-transform: none !important;
-  letter-spacing: 0 !important;
-  color: var(--text) !important;
-  cursor: pointer;
-  font-weight: 700 !important;
-}
-#f-recorrente { width: auto !important; }
-#f-recorrente-wrap input { width: 90px; }
-
 .modal-acoes { display: flex; gap: 10px; margin-top: 4px; }
 .modal-acoes .btn-primario { flex: 1.4; font-size: 1.05rem; }
 .btn-secundario {
@@ -570,9 +554,6 @@ dialog::backdrop { background: rgba(2, 6, 23, .55); backdrop-filter: blur(3px); 
 }
 .toast.visivel { opacity: 1; }
 @media (min-width: 720px) { .toast { bottom: 24px; } }
-
-/* ---------- lançamento recorrente (extra) ---------- */
-#f-recorrente-wrap { display: flex; flex-direction: column; gap: 6px; font-size: .85rem; }
 
 /* ============ aba Chaveiros ============ */
 .chaveiros .cha-dica { font-size: .85rem; opacity: .8; margin: 2px 0 14px; }

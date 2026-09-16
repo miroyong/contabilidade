@@ -8,7 +8,6 @@ primeiro, com cache local e sincronização) e traz dashboard e relatórios.
 - Extrato com filtros (tipo, categoria, conta, busca)
 - Dashboard: pizza entradas × saídas, insights e comparativo com o mês anterior
 - Editar/excluir lançamentos, marcar "pago/enviado ✓" em despesas (Dízimo/Custos)
-- Lançamentos recorrentes (cria nos próximos meses)
 - Aba 🪙 Chaveiros: calcula venda/custo/dízimo/alimentação/transporte e lança tudo
 - PWA: instala no celular, abre offline e sincroniza quando volta
 
@@ -63,8 +62,7 @@ assets para forçar atualização nos dispositivos.
 ## Uso
 
 - **＋ Novo lançamento**: escolha Entrada/Saída, preencha e Salvar.
-  Valor aceita `1.234,56` ou `1234.56`. Marque "recorrente" para repetir nos
-  próximos meses.
+  Valor aceita `1.234,56` ou `1234.56`.
 - **Chips de mês**: alternam entre os meses. **＋ (criar mês)** cria um novo.
 - **✏️ / 🗑️**: editar ou excluir um lançamento.
 - **○ / ✓** (despesa Dízimo/Custos): marcar como pago/enviado.

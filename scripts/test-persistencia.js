@@ -46,10 +46,8 @@ function boot(failServer) {
     'btn-novo', 'filtro-tipo', 'filtro-categoria', 'filtro-conta', 'filtro-busca', 'grafico',
     'contador', 'lista', 'modal', 'modal-titulo', 'f-data', 'f-descricao', 'f-categoria',
     'f-conta', 'f-valor', 'dl-categorias', 'dl-contas', 'btn-cancelar', 'btn-novo-mes',
-    'toast', 'form-lancamento', 'btn-salvar', 'pizza-grafico', 'insights', 'sync-status',
-    'f-recorrente', 'f-recorrente-meses'];
+    'toast', 'form-lancamento', 'btn-salvar', 'pizza-grafico', 'insights', 'sync-status'];
   ids.forEach(i => byId(i));
-  byId('f-recorrente').checked = false;
   global.document = {
     getElementById: byId,
     querySelectorAll: () => [],

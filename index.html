@@ -171,8 +171,8 @@
     <h3 id="modal-titulo">Novo lançamento</h3>
 
     <div class="tipo-toggle">
-      <button type="button" class="tipo-btn ativo" data-tipo="entrada">Entrada</button>
-      <button type="button" class="tipo-btn" data-tipo="saida">Saída</button>
+      <button type="button" class="tipo-btn ativo" data-tipo="saida">Saída</button>
+      <button type="button" class="tipo-btn" data-tipo="entrada">Entrada</button>
     </div>
 
     <label>Data
@@ -196,13 +196,6 @@
     <datalist id="dl-categorias"></datalist>
     <datalist id="dl-contas"></datalist>
 
-    <label class="recorrente-linha">
-      <input type="checkbox" id="f-recorrente"> Lançamento recorrente
-    </label>
-    <label id="f-recorrente-wrap" hidden>Repetir por quantos meses?
-      <input type="number" id="f-recorrente-meses" min="1" max="24" value="12">
-    </label>
-
     <div class="modal-acoes">
       <button type="button" class="btn-secundario" id="btn-cancelar">Cancelar</button>
       <button type="submit" class="btn-primario" id="btn-salvar">Salvar</button>
@@ -212,12 +205,12 @@
 
 <div id="toast" class="toast" hidden></div>
 
-<script src="config.js?v=34"></script>
-<script src="app.js?v=34"></script>
+<script src="config.js?v=35"></script>
+<script src="app.js?v=35"></script>
 <script>
   // Registra o service worker (PWA) — falha silenciosa se não suportado/Https.
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js?v=34').catch(function () {});
+    navigator.serviceWorker.register('service-worker.js?v=35').catch(function () {});
   }
 </script>
 </body>
