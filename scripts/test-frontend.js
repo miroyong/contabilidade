@@ -31,7 +31,7 @@ const ids = ['aviso-config', 'saldo-mes', 'saldo-valor', 'saldo-entradas', 'sald
   'saldo-pix', 'saldo-fisico', 'btn-planilha', 'btn-tema',
   'meses-list', 'aviso-mes', 'btn-novo', 'filtro-tipo', 'filtro-categoria', 'filtro-conta',
   'filtro-busca', 'grafico', 'contador', 'lista', 'modal', 'modal-titulo', 'f-data',
-  'f-descricao', 'f-categoria', 'f-conta', 'f-valor', 'dl-categorias', 'dl-contas',
+  'f-descricao', 'f-categoria', 'f-conta', 'f-valor', 'dl-categorias', 'chips-conta',
   'btn-cancelar', 'btn-novo-mes', 'toast', 'form-lancamento', 'btn-salvar'];
 
 global.document = {
@@ -127,10 +127,9 @@ setTimeout(() => {
   assert.ok(els['saldo-fisico'].className.includes('negativo'), 'Físico negativo');
   assert.ok(els['saldo-pix'].className.includes('positivo'), 'Pix positivo');
 
-  // menu Conta: Pix / Cartão e Dinheiro no lançamento; filtro preserva legado
-  assert.ok(els['dl-contas'].innerHTML.includes('value="Pix / Cartão"'), 'datalist Conta inclui Pix / Cartão');
-  assert.ok(els['dl-contas'].innerHTML.includes('value="Dinheiro"'), 'datalist Conta inclui Dinheiro');
-  assert.ok(!els['dl-contas'].innerHTML.includes('Banco do Brasil'), 'datalist sem contas legado');
+  // Conta: somente os botões Pix / Cartão e Dinheiro; filtro preserva legado
+  assert.ok(appJs.includes("montar(boxConta, ['Pix / Cartão', 'Dinheiro'])"),
+    'botões de Conta limitados a Pix / Cartão e Dinheiro');
   assert.ok(els['filtro-conta'].innerHTML.includes('"Pix"') && els['filtro-conta'].innerHTML.includes('"Físico"'),
     'filtro Conta com Pix/Físico');
   assert.ok(!els['filtro-conta'].innerHTML.includes('Cartão de Crédito'), 'filtro sem contas legado');

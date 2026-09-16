@@ -394,9 +394,6 @@
     $('dl-categorias').innerHTML = state.categorias.map(function (c) {
       return '<option value="' + esc(c) + '">';
     }).join('');
-    $('dl-contas').innerHTML = ['Pix / Cartão', 'Dinheiro'].map(function (c) {
-      return '<option value="' + esc(c) + '">';
-    }).join('');
   }
 
   // ------------------------------------------------------------ render

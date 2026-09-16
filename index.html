@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon.svg">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=45">
+<link rel="stylesheet" href="style.css?v=46">
 </head>
 <body>
 
@@ -185,16 +185,14 @@
       <input type="text" id="f-categoria" list="dl-categorias" placeholder="Ex.: Alimentação">
     </label>
     <div class="chips-rapido-box" id="chips-categoria" hidden></div>
-    <label>Conta
-      <input type="text" id="f-conta" list="dl-contas" placeholder="Ex.: Pix / Cartão ou Dinheiro">
-    </label>
-    <div class="chips-rapido-box" id="chips-conta" hidden></div>
+    <label>Conta</label>
+    <input type="hidden" id="f-conta">
+    <div class="chips-rapido-box" id="chips-conta"></div>
     <label>Valor (R$)
       <input type="text" class="campo-valor" id="f-valor" inputmode="decimal" placeholder="0,00" required>
     </label>
 
     <datalist id="dl-categorias"></datalist>
-    <datalist id="dl-contas"></datalist>
 
     <div class="modal-acoes">
       <button type="button" class="btn-secundario" id="btn-cancelar">Cancelar</button>
@@ -205,12 +203,12 @@
 
 <div id="toast" class="toast" hidden></div>
 
-<script src="config.js?v=45"></script>
-<script src="app.js?v=45"></script>
+<script src="config.js?v=46"></script>
+<script src="app.js?v=46"></script>
 <script>
   // Registra o service worker (PWA) — falha silenciosa se não suportado/Https.
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js?v=45').catch(function () {});
+    navigator.serviceWorker.register('service-worker.js?v=46').catch(function () {});
   }
 </script>
 </body>
