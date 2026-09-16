@@ -731,14 +731,8 @@
     var eraEdicao = !!editando;
     var tipo = dados.tipo;
     var mudouTipo = eraEdicao && editando.tipo !== tipo;
+    var mesOrigem = state.mes;
     var mesDestino = eraEdicao ? state.mes : mesDaData(dados.data);
-
-    if (!eraEdicao && mesDestino !== state.mes) {
-      state.mes = mesDestino;
-      state.existe = true;
-      if (state.meses.indexOf(mesDestino) < 0) state.meses.push(mesDestino);
-      state.meses.sort();
-    }
 
     // preserva a marca "✓" (pago/enviado) ao editor uma despesa já marcada:
     // a caixa de edição mostra sem o prefixo, mas ao salvar mantemos a marca
@@ -775,7 +769,7 @@
       state[editando.tipo === 'entrada' ? 'entradas' : 'saidas'] =
         listaAntiga.filter(function (l) { return l.linha !== editando.linha; });
       (tipo === 'entrada' ? state.entradas : state.saidas).push(item);
-    } else {
+    } else if (mesDestino === mesOrigem) {
       (tipo === 'entrada' ? state.entradas : state.saidas).push(item);
     }
     state.editando = null;
@@ -826,6 +820,15 @@
         for (var j2 = 0; j2 < listaN2.length; j2++) {
           if (listaN2[j2].linha === item.linha) { listaN2[j2].linha = r.linha; break; }
         }
+      }
+      if (!eraEdicao && state.meses.indexOf(mesDestino) < 0) {
+        state.meses.push(mesDestino);
+        state.meses.sort();
+      }
+      if (!eraEdicao && mesDestino !== mesOrigem) {
+        toast('Adicionado em ' + mesDestino + '!');
+        selecionarMes(mesDestino);
+        return;
       }
       salvarCacheMes();
       renderTudo();
