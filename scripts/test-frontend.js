@@ -27,7 +27,7 @@ function makeEl(id) {
 
 const els = {};
 const byId = (id) => (els[id] || (els[id] = makeEl(id)));
-const ids = ['aviso-config', 'saldo-mes', 'saldo-valor', 'saldo-entradas', 'saldo-saidas',
+const ids = ['aviso-config', 'saldo-mes', 'saldo-escopo', 'saldo-valor', 'saldo-entradas', 'saldo-saidas',
   'saldo-pix', 'saldo-fisico', 'btn-planilha', 'btn-tema',
   'meses-list', 'aviso-mes', 'btn-novo-fab', 'filtro-tipo', 'filtro-categoria', 'filtro-conta',
   'filtro-busca', 'grafico', 'contador', 'lista', 'modal', 'modal-titulo', 'f-data',
@@ -73,6 +73,16 @@ const ROWS = [
   { num: 30, tipo: 'saida', data: d(2), descricao: 'Dízimo (venda de chaveiros)', categoria: 'Dízimo', conta: 'Pix', valor: 500 },
   { num: 40, tipo: 'saida', data: d(10), descricao: 'Aluguel', categoria: 'Moradia', conta: 'Físico', valor: 1200 }
 ];
+// mês anterior: usado no comparativo e no caixa acumulado (400 de sobra em caixa)
+const PREV_ROWS = [
+  { num: 1, tipo: 'entrada', data: '2026-01-05', descricao: 'Salário anterior', categoria: 'Salário', conta: 'Pix / Cartão', valor: 1000 },
+  { num: 2, tipo: 'entrada', data: '2026-01-06', descricao: 'Venda anterior', categoria: 'Serviços', conta: 'Dinheiro', valor: 200 },
+  { num: 3, tipo: 'saida', data: '2026-01-07', descricao: 'Mercado anterior', categoria: 'Alimentação', conta: 'Físico', valor: 700 },
+  { num: 4, tipo: 'saida', data: '2026-01-08', descricao: 'Dízimo anterior', categoria: 'Dízimo', conta: 'Pix', valor: 100 }
+];
+// o que o servidor devolve para o mês vigente (cresce quando incluirPosts = true)
+const CUR_ROWS = ROWS.slice();
+let incluirPosts = false;
 const OP_ROWS = [
   { categoria: 'Salário', conta: 'Pix / Cartão' }, { categoria: 'Serviços', conta: 'Físico' },
   { categoria: 'Dízimo', conta: 'Pix' }, { categoria: 'Moradia', conta: 'Físico' }
@@ -96,17 +106,22 @@ global.fetch = (url, opts) => {
       const id = q.get('id').replace(/^eq\./, '');
       return Promise.resolve(okJson(id === curName || id === prevName ? [{ id }] : []));
     }
-    return Promise.resolve(okJson([{ id: curName }, { id: prevName }]));
+    // ordem de criação (criado_em.asc), como o servidor devolve
+    return Promise.resolve(okJson([{ id: prevName }, { id: curName }]));
   }
   if (table === 'lancamentos') {
     if (q.get('select') === 'categoria,conta') return Promise.resolve(okJson(OP_ROWS));
     const mes = (q.get('mes_id') || '').replace(/^eq\./, '');
     if (method === 'POST') {
-      POSTS.push(JSON.parse((opts && opts.body) || '{}'));
+      const body = JSON.parse((opts && opts.body) || '{}');
+      POSTS.push(body);
+      if (incluirPosts) CUR_ROWS.push({ num: 500 + POSTS.length, ...body });
       return Promise.resolve(okJson([{ ...ROWS[0], num: 99 }], 201));
     }
     if (method === 'PATCH' || method === 'DELETE') return Promise.resolve(okJson(null, 204));
-    return Promise.resolve(okJson(mes === curName ? ROWS : []));
+    if (mes === curName) return Promise.resolve(okJson(CUR_ROWS));
+    if (mes === prevName) return Promise.resolve(okJson(PREV_ROWS));
+    return Promise.resolve(okJson([]));
   }
   return Promise.resolve(okJson([]));
 };
@@ -126,16 +141,21 @@ const norm = (s) => String(s).replace(/\u00A0/g, ' '); // NBSP → espaço norma
 
 setTimeout(() => {
   assert.strictEqual(els['saldo-mes'].textContent, curName, 'mês selecionado');
-  assert.strictEqual(norm(els['saldo-valor'].textContent), 'R$ 1.100,00', 'balanço formatado');
+  // hero = CAIXA ACUMULADO (mês anterior + vigente), não só o mês aberto
+  assert.strictEqual(els['saldo-escopo'].textContent, 'Caixa acumulado até ', 'rótulo do hero avisa que é acumulado');
+  assert.strictEqual(norm(els['saldo-valor'].textContent), 'R$ 1.500,00', 'caixa acumulado (400 do mês anterior + 1100)');
   assert.ok(els['saldo-valor'].className.includes('positivo'), 'classe positivo');
-  assert.strictEqual(norm(els['saldo-entradas'].textContent), 'R$ 2.800,00', 'total entradas');
-  assert.strictEqual(norm(els['saldo-saidas'].textContent), 'R$ 1.700,00', 'total saídas');
+  assert.strictEqual(norm(els['saldo-entradas'].textContent), 'R$ 4.000,00', 'entradas acumuladas (2800+1200)');
+  assert.strictEqual(norm(els['saldo-saidas'].textContent), 'R$ 2.500,00', 'saídas acumuladas (1700+800)');
 
-  // novo: balanço por conta (Pix / Dinheiro); Total só no saldo-valor em cima
-  assert.strictEqual(norm(els['saldo-pix'].textContent), 'R$ 2.000,00', 'balanço Pix (2500-500)');
-  assert.strictEqual(norm(els['saldo-fisico'].textContent), '-R$ 900,00', 'balanço Dinheiro (300-1200)');
+  // balanço por conta também acumulado (Pix / Dinheiro); Total só no saldo-valor em cima
+  assert.strictEqual(norm(els['saldo-pix'].textContent), 'R$ 2.900,00', 'Pix acumulado (2000+900)');
+  assert.strictEqual(norm(els['saldo-fisico'].textContent), '-R$ 1.400,00', 'Dinheiro acumulado (-900-500)');
   assert.ok(els['saldo-fisico'].className.includes('negativo'), 'caixa negativo');
   assert.ok(els['saldo-pix'].className.includes('positivo'), 'Pix positivo');
+  // invariantes do hero: Total = Entradas - Saídas = Pix + Dinheiro
+  assert.strictEqual(1500, 4000 - 2500, 'invariante entradas - saídas');
+  assert.strictEqual(1500, 2900 - 1400, 'invariante Pix + Dinheiro');
 
   // Conta: somente os botões Pix / Cartão e Dinheiro; filtro preserva legado
   assert.ok(appJs.includes("montar(boxConta, ['Pix / Cartão', 'Dinheiro'])"),
@@ -172,7 +192,7 @@ setTimeout(() => {
     indexHtml.includes('data-acao="excluir"'), 'folha de ações tem editar/excluir');
   assert.strictEqual(els['contador'].textContent, '4', 'contador de lançamentos');
 
-  // dashboard: barra de proporção + KPIs do mês
+  // dashboard: barra de proporção + KPIs DO MÊS (o acumulado fica só no hero)
   // entradas 2500+300 = 2800 · saídas 500+1200 = 1700 → 62% / 38%
   assert.strictEqual(els['barra-entrada'].style.width, '62%', 'barra marca a fatia de entradas');
   assert.strictEqual(els['barra-saida'].style.width, '38%', 'barra marca a fatia de saídas');
@@ -209,6 +229,20 @@ setTimeout(() => {
   // (3) forma de pagamento / campos Pix MANTIDOS
   assert.ok(appJs.includes("conta: 'Pix'"), 'lançamento mantém conta/forma de pagamento Pix');
   assert.ok(appJs.includes("porConta['Pix']"), 'dashboard mantém saldo por conta Pix');
+  // (5) caixa acumulado: o hero soma todos os meses até o vigente
+  assert.ok(appJs.includes("case 'acumulado':") && appJs.includes('function sbAcumulado(meses)'),
+    'ação "acumulado" existe no adaptador e no cliente');
+  assert.ok(appJs.includes('state.meses.slice(0, idx + 1)'),
+    'acumula do primeiro mês até o vigente (state.meses vem em ordem de criação)');
+  assert.ok(appJs.includes("select=tipo,conta,valor&mes_id=eq."),
+    'soma o caixa com uma consulta por mês (evita o teto de linhas do PostgREST)');
+  assert.ok(appJs.includes('acumulado: state.acumulado') && appJs.includes('state.acumulado = c.acumulado || null'),
+    'cache local guarda e relê o acumulado (renderiza offline na hora)');
+  assert.ok(appJs.includes("'Caixa acumulado até '") && appJs.includes("'Balanço · '"),
+    'rótulo do hero alterna entre acumulado e balanço do mês');
+  assert.ok(indexHtml.includes('id="saldo-escopo"'), 'hero tem o rótulo de escopo (#saldo-escopo)');
+  assert.ok(!appJs.includes('state.meses.sort()'),
+    'meses mantêm a ordem de criação (sort alfabético trocaria a ordem do acumulado)');
   // (4) visualizar() (troca de aba) preservada após remoção do bloco Pix
   assert.ok(/function visualizar\(viz\)/.test(appJs) && appJs.includes("visualizar('fin')"),
     'visualizar() preservada e chamada no boot');
@@ -310,6 +344,9 @@ setTimeout(() => {
   setTimeout(() => {
     assert.strictEqual(els['saldo-mes'].textContent, prevName,
       'aba trocada para ' + prevName + ' (diferente do mês de hoje)');
+    // primeiro mês da lista: acumulado = só ele mesmo (400 de sobra)
+    assert.strictEqual(norm(els['saldo-valor'].textContent), 'R$ 400,00',
+      'acumulado até o 1º mês não inclui meses posteriores');
 
     byId('cha-pix').value = '50,00';
     byId('cha-calcular')._cb['click']();
@@ -327,6 +364,8 @@ setTimeout(() => {
       });
       assert.strictEqual(els['saldo-mes'].textContent, curName,
         'app muda para o mês da data depois de lançar');
+      assert.strictEqual(norm(els['saldo-valor'].textContent), 'R$ 1.500,00',
+        'hero volta ao acumulado do mês vigente');
 
       // ===== extrato paginado + botão flutuante (evita rolar centenas de itens) =====
       assert.ok(appJs.includes('var visiveis = todos.slice(0, state.limiteLista)'),
@@ -342,8 +381,26 @@ setTimeout(() => {
       assert.ok(!indexHtml.includes('id="btn-novo"') && !/['"]btn-novo['"]/.test(appJs),
         'barra fixa "#btn-novo" removida do HTML e do JS (só resta o botão circular)');
 
-      console.log('✔ SMOKE TEST DO FRONT-END PASSOU (inclui dashboard, tema, estático e mês da arrecadação)');
-      process.exit(0);
+      // ===== ao gravar no mês aberto, o caixa acumulado se atualiza sozinho =====
+      incluirPosts = true;
+      byId('f-data').value = d(3);
+      byId('f-descricao').value = 'Compra teste';
+      byId('f-categoria').value = 'Moradia';
+      byId('f-conta').value = 'Dinheiro';
+      byId('f-valor').value = '100';
+      byId('form-lancamento')._cb['submit']({ preventDefault() {} });
+      setTimeout(() => {
+        const b = POSTS[POSTS.length - 1];
+        assert.ok(b && b.descricao === 'Compra teste', 'lançamento de teste enviado (' + JSON.stringify(b) + ')');
+        const esperado = b.tipo === 'saida' ? 'R$ 1.400,00' : 'R$ 1.600,00';
+        assert.strictEqual(norm(els['saldo-valor'].textContent), esperado,
+          'hero recarrega o caixa acumulado depois de gravar no mês aberto (era R$ 1.500,00)');
+        assert.ok(JSON.parse(memStore['cf_lan_' + curName]).acumulado,
+          'cache do mês guarda o acumulado atualizado');
+
+        console.log('✔ SMOKE TEST DO FRONT-END PASSOU (inclui dashboard, tema, estático e mês da arrecadação)');
+        process.exit(0);
+      }, 300);
     }, 250);
   }, 250);
 }, 300);

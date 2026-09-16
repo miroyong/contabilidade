@@ -5,6 +5,8 @@ Aplicação web (HTML/CSS/JS, **sem dependências** e sem build) com backend no
 primeiro, com cache local e sincronização) e traz dashboard e relatórios.
 
 - Lançamento rápido de entradas e saídas, com saldo por conta (Pix / Cartão e Dinheiro)
+- Hero com o **caixa acumulado**: soma o mês aberto + todos os anteriores
+  (o que sobra num mês continua no seguinte); o Dashboard segue mostrando os números do mês
 - Extrato com filtros (tipo, categoria, conta, busca)
 - Dashboard: barra de proporção entradas × saídas, KPIs do mês e comparativo com o anterior
 - Ações por lançamento (⋯): editar, marcar "pago/enviado" em despesas (Dízimo/Custos) e excluir
@@ -21,6 +23,11 @@ O navegador fala direto com a API REST do Supabase usando a chave pública
 **anon**. O contrato do app é simples — meses por nome (ex.: `Agosto`) e cada
 lançamento tem `tipo`, `data`, `descricao`, `categoria`, `conta`, `valor`
 (a coluna `num` do banco vira a "linha" que o app usa para editar/excluir).
+
+Como a ordem dos meses é a de criação (`criado_em`), o caixa exibido no topo é o
+**acumulado até o mês aberto**: uma consulta por mês (em paralelo, para não bater
+no teto de linhas do PostgREST) somando entradas, saídas e o saldo de Pix e
+Dinheiro. O total acumulado fica no cache local do mês, então abre offline.
 
 Schema documentado em `supabase/schema.sql` (tabelas `meses` e `lancamentos`
 + RLS).

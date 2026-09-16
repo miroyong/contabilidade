@@ -15,6 +15,7 @@
     existe: true,       // a aba do mês selecionado existe?
     entradas: [],
     saidas: [],
+    acumulado: null,    // soma dos meses até o vigente (caixa que passa de um mês para o outro)
     categorias: [],
     contas: [],
     filtro: { tipo: 'todos', categoria: '', conta: '', busca: '' },
@@ -47,7 +48,9 @@
     }, 60000);
   }
   function salvarCacheMes() {
-    cacheSet('lan_' + state.mes, { existe: state.existe, entradas: state.entradas, saidas: state.saidas });
+    cacheSet('lan_' + state.mes, {
+      existe: state.existe, entradas: state.entradas, saidas: state.saidas, acumulado: state.acumulado
+    });
   }
   function renderDoCache(mes) {
     var c = cacheGet('lan_' + mes);
@@ -55,6 +58,7 @@
     state.existe = !!c.existe;
     state.entradas = c.entradas || [];
     state.saidas = c.saidas || [];
+    state.acumulado = c.acumulado || null;
     renderTudo();
     return true;
   }
@@ -69,6 +73,7 @@
       case 'meses':       return sbMeses();
       case 'opcoes':      return sbOpcoes();
       case 'lancamentos': return sbLancamentos(params.mes);
+      case 'acumulado':   return sbAcumulado(params.meses);
       case 'adicionar':   return sbAdicionar(params);
       case 'atualizar':   return sbAtualizar(params);
       case 'excluir':     return sbExcluir(params);
@@ -183,6 +188,26 @@
         entradas: entradas, saidas: saidas,
         totais: { entradas: totE, saidas: totS, balanco: totE - totS }
       };
+    });
+  }
+
+  // soma de todos os meses até o vigente: o caixa que sobra num mês continua no
+  // seguinte, então o hero mostra o acumulado (não só o mês selecionado).
+  // Uma consulta por mês (em paralelo) para não bater no teto de linhas do PostgREST.
+  function sbAcumulado(meses) {
+    var total = novoTotal();
+    if (!meses || !meses.length) return Promise.resolve(total);
+    return Promise.all(meses.map(function (m) {
+      return sbRest('lancamentos', { query: 'select=tipo,conta,valor&mes_id=eq.' + sbEnc(m) });
+    })).then(function (listas) {
+      listas.forEach(function (rows) {
+        var ent = [], sai = [];
+        (rows || []).forEach(function (l) {
+          (l.tipo === 'saida' ? sai : ent).push({ valor: Number(l.valor) || 0, conta: l.conta });
+        });
+        somarNoTotal(total, somarLancamentos(ent, sai));
+      });
+      return total;
     });
   }
 
@@ -372,19 +397,42 @@
       });
   }
 
+  function mesesAteAqui(mes) {
+    // o mês selecionado não estar na lista é raro (aba recém-criada): acumula tudo
+    var idx = state.meses.indexOf(mes);
+    return idx < 0 ? state.meses.slice() : state.meses.slice(0, idx + 1);
+  }
+
+  // o mês aberto faz parte do acumulado: depois de gravar/excluir, refaz a soma
+  function atualizarAcumulado() {
+    return chamar('acumulado', { meses: mesesAteAqui(state.mes) }).then(function (ac) {
+      if (!ac || !ac.ok) return;
+      state.acumulado = ac;
+      salvarCacheMes();
+      renderSaldo();
+    }).catch(function () {});
+  }
+
   function selecionarMes(mes) {
     state.mes = mes;
     state.editando = null;
     limparFiltros();
     renderDoCache(mes); // mostra na hora se houver cache
     syncStatus(true, 'atualizando…');
-    chamar('lancamentos', { mes: mes })
-      .then(function (r) {
+    // o caixa acumula de mês em mês: soma o selecionado + todos os anteriores
+    var ateAqui = mesesAteAqui(mes);
+    Promise.all([
+      chamar('lancamentos', { mes: mes }),
+      chamar('acumulado', { meses: ateAqui }).catch(function () { return null; })
+    ])
+      .then(function (rs) {
+        var r = rs[0], ac = rs[1];
         syncStatus(false);
         if (!r.ok) throw new Error(r.erro);
         state.existe = !!r.existe;
         state.entradas = r.entradas || [];
         state.saidas = r.saidas || [];
+        state.acumulado = ac && ac.ok ? ac : null;
         salvarCacheMes();
         renderTudo();
         carregarComparativo(mes);
@@ -435,36 +483,52 @@
     return null; // não entra no breakdown
   }
 
+  function novoTotal() {
+    return { ok: true, entradas: 0, saidas: 0, porConta: { 'Pix': 0, 'Físico': 0 } };
+  }
+
+  // soma lançamentos já normalizados ({ valor, conta }): entradas, saídas e saldo por conta
+  function somarLancamentos(entradas, saidas) {
+    var t = novoTotal();
+    entradas.forEach(function (l) {
+      t.entradas += l.valor;
+      var k = contaChave(l.conta);
+      if (k) t.porConta[k] += l.valor;
+    });
+    saidas.forEach(function (l) {
+      t.saidas += l.valor;
+      var k = contaChave(l.conta);
+      if (k) t.porConta[k] -= l.valor;
+    });
+    return t;
+  }
+
+  function somarNoTotal(destino, t) {
+    destino.entradas += t.entradas;
+    destino.saidas += t.saidas;
+    destino.porConta['Pix'] += t.porConta['Pix'];
+    destino.porConta['Físico'] += t.porConta['Físico'];
+  }
+
   function renderSaldo() {
-    var totE = state.entradas.reduce(function (s, l) { return s + l.valor; }, 0);
-    var totS = state.saidas.reduce(function (s, l) { return s + l.valor; }, 0);
-    var bal = totE - totS;
-
-    // balanço por conta: soma entradas e saídas de cada conta
-    var porConta = { 'Pix': 0, 'Físico': 0 };
-    function acumula(lista, sinal) {
-      lista.forEach(function (l) {
-        var k = contaChave(l.conta);
-        if (k && porConta.hasOwnProperty(k)) porConta[k] += sinal * l.valor;
-      });
-    }
-    acumula(state.entradas, 1);
-    acumula(state.saidas, -1);
+    var t = state.acumulado || somarLancamentos(state.entradas, state.saidas);
+    var bal = t.entradas - t.saidas;
+    var porConta = { 'Pix': t.porConta['Pix'], 'Físico': t.porConta['Físico'] };
+    // lançamentos sem conta reconhecida entram só no Total
     var outros = bal - (porConta['Pix'] + porConta['Físico']);
-
+    $('saldo-escopo').textContent = state.acumulado ? 'Caixa acumulado até ' : 'Balanço · ';
     $('saldo-mes').textContent = state.mes || '—';
     var v = $('saldo-valor');
     v.textContent = fmtBRL.format(bal);
     v.className = 'saldo-valor ' + (bal >= 0 ? 'positivo' : 'negativo');
-    $('saldo-entradas').textContent = fmtBRL.format(totE);
-    $('saldo-saidas').textContent = fmtBRL.format(totS);
+    $('saldo-entradas').textContent = fmtBRL.format(t.entradas);
+    $('saldo-saidas').textContent = fmtBRL.format(t.saidas);
 
     $('saldo-pix').textContent = fmtBRL.format(porConta['Pix']);
     $('saldo-fisico').textContent = fmtBRL.format(porConta['Físico']);
     $('saldo-pix').className = 'saldo-item-valor ' + (porConta['Pix'] >= 0 ? 'positivo' : 'negativo');
     $('saldo-fisico').className = 'saldo-item-valor ' + (porConta['Físico'] >= 0 ? 'positivo' : 'negativo');
 
-    // lançamentos sem conta ("outros") ficam refletidos apenas no Total em cima
     void outros;
   }
 
@@ -792,10 +856,9 @@
   function criarMes(mes) {
     chamar('novoMes', { mes: mes }).then(function (r) {
       if (!r.ok) { toast('Erro: ' + r.erro); return; }
-      if (!state.meses.length || state.meses.indexOf(mes) < 0) {
-        state.meses.push(r.mes || mes);
-        state.meses.sort();
-      }
+      // mês recém-criado é o mais novo: entra no fim. A ordem é a de criação
+      // (mesma do servidor) e define quais meses somam no caixa acumulado
+      if (!state.meses.length || state.meses.indexOf(mes) < 0) state.meses.push(r.mes || mes);
       toast('Aba "' + mes + '" criada!');
       selecionarMes(r.mes || mes);
     }).catch(function (e) { toast('Erro: ' + e.message); });
@@ -899,10 +962,7 @@
           if (listaN2[j2].linha === item.linha) { listaN2[j2].linha = r.linha; break; }
         }
       }
-      if (!eraEdicao && state.meses.indexOf(mesDestino) < 0) {
-        state.meses.push(mesDestino);
-        state.meses.sort();
-      }
+      if (!eraEdicao && state.meses.indexOf(mesDestino) < 0) state.meses.push(mesDestino);
       if (!eraEdicao && mesDestino !== mesOrigem) {
         toast('Adicionado em ' + mesDestino + '!');
         selecionarMes(mesDestino);
@@ -911,6 +971,7 @@
       salvarCacheMes();
       renderTudo();
       toast(eraEdicao ? 'Atualizado!' : 'Adicionado!');
+      atualizarAcumulado(); // o mês aberto entra no caixa acumulado
     }).catch(function (e) {
       syncStatus(false);
       state.salvando = false;
@@ -976,7 +1037,8 @@
     syncStatus(true, 'excluindo…');
     chamar('excluir', { mes: state.mes, tipo: tipo, linha: linha }).then(function (r) {
       syncStatus(false);
-      if (!r.ok) { toast('Erro: ' + r.erro); recarregarMes(); }
+      if (!r.ok) { toast('Erro: ' + r.erro); recarregarMes(); return; }
+      atualizarAcumulado(); // o item saiu do mês aberto: o acumulado muda
     }).catch(function (e) {
       syncStatus(false);
       toast('Erro: ' + e.message);
@@ -1372,10 +1434,7 @@
     prom.then(function (r) {
       syncStatus(false);
       if (!r.ok) throw new Error(r.erro || 'não foi possível lançar na planilha.');
-      if (state.meses.indexOf(mesDestino) < 0) {
-        state.meses.push(mesDestino);
-        state.meses.sort();
-      }
+      if (state.meses.indexOf(mesDestino) < 0) state.meses.push(mesDestino);
       toast(itens.length + ' lançamento(s) gravados' + (mesDestino !== state.mes ? ' em ' + mesDestino : '') + '!');
       $('cha-lancar').hidden = true;
       $('cha-resumo').hidden = true;

@@ -4,7 +4,7 @@
  * instalar/fazer update, pré-grava os assets atuais.
  * Suba VER a cada deploy para forçar refresh do shell.
  */
-const VER = 'contabilidade-v55';
+const VER = 'contabilidade-v56';
 const CACHE = VER;
 const PRECACHE = [
   './',
