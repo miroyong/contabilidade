@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon.svg">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=50">
+<link rel="stylesheet" href="style.css?v=51">
 </head>
 <body>
 
@@ -123,17 +123,21 @@
     </div>
   </section>
 
-  <!-- Dashboard -->
+  <!-- Dashboard: proporção entradas x saídas + números do mês -->
   <section class="cartao" id="dashboard-section">
-    <h2>📊 Dashboard</h2>
-    <div class="dash-grid">
-      <div class="dash-pizza">
-        <div class="pizza" id="pizza-grafico"></div>
-        <div class="pizza-rotulos" id="pizza-rotulos"></div>
-      </div>
-      <div class="dash-insights" id="insights"></div>
+    <div class="resumo-topo">
+      <h2>📊 Dashboard</h2>
+      <span class="resumo-comp" id="comparativo"></span>
     </div>
-    <div class="comparativo" id="comparativo"></div>
+
+    <!-- barra decorativa: os mesmos números aparecem na legenda abaixo -->
+    <div class="resumo-barra" id="barra-dist" aria-hidden="true">
+      <span class="resumo-fatia-e" id="barra-entrada"></span>
+      <span class="resumo-fatia-s" id="barra-saida"></span>
+    </div>
+    <div class="resumo-legenda" id="barra-legenda"></div>
+
+    <div class="resumo-kpis" id="insights"></div>
   </section>
 
   <!-- Filtros -->
@@ -204,12 +208,12 @@
 
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="config.js?v=50"></script>
-<script src="app.js?v=50"></script>
+<script src="config.js?v=51"></script>
+<script src="app.js?v=51"></script>
 <script>
   // Registra o service worker (PWA) — falha silenciosa se não suportado/Https.
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js?v=50').catch(function () {});
+    navigator.serviceWorker.register('service-worker.js?v=51').catch(function () {});
   }
 </script>
 </body>

@@ -32,7 +32,8 @@ const ids = ['aviso-config', 'saldo-mes', 'saldo-valor', 'saldo-entradas', 'sald
   'meses-list', 'aviso-mes', 'btn-novo-fab', 'filtro-tipo', 'filtro-categoria', 'filtro-conta',
   'filtro-busca', 'grafico', 'contador', 'lista', 'modal', 'modal-titulo', 'f-data',
   'f-descricao', 'f-categoria', 'f-conta', 'f-valor', 'dl-categorias', 'chips-conta',
-  'btn-cancelar', 'btn-novo-mes', 'toast', 'form-lancamento', 'btn-salvar'];
+  'btn-cancelar', 'btn-novo-mes', 'toast', 'form-lancamento', 'btn-salvar',
+  'barra-dist', 'barra-entrada', 'barra-saida', 'barra-legenda', 'insights', 'comparativo'];
 
 global.document = {
   getElementById: byId,
@@ -154,12 +155,23 @@ setTimeout(() => {
   assert.ok(listaHtml.includes('data-edit') && listaHtml.includes('data-del'), 'ações editar/excluir');
   assert.strictEqual(els['contador'].textContent, '4', 'contador de lançamentos');
 
-  // dashboard: pizza + insights renderizados
-  const pizzaHtml = els['pizza-grafico'].innerHTML;
-  assert.ok(pizzaHtml.includes('pizza-centro') && pizzaHtml.includes('%'), 'pizza renderizada');
-  const insightsHtml = els['insights'].innerHTML;
-  assert.ok(insightsHtml.includes('insight'), 'insights renderizados');
-  assert.ok(insightsHtml.includes('Comprometimento'), 'insight de comprometimento');
+  // dashboard: barra de proporção + KPIs do mês
+  // entradas 2500+300 = 2800 · saídas 500+1200 = 1700 → 62% / 38%
+  assert.strictEqual(els['barra-entrada'].style.width, '62%', 'barra marca a fatia de entradas');
+  assert.strictEqual(els['barra-saida'].style.width, '38%', 'barra marca a fatia de saídas');
+  const legendaHtml = norm(els['barra-legenda'].innerHTML);
+  assert.ok(legendaHtml.includes('62%') && legendaHtml.includes('38%'),
+    'legenda repete as porcentagens em texto');
+  const resumoHtml = norm(els['insights'].innerHTML);
+  assert.ok(resumoHtml.includes('kpi-rot') && resumoHtml.includes('Categoria top'),
+    'KPIs do resumo renderizados');
+  assert.ok(resumoHtml.includes('Comprometimento') && resumoHtml.includes('Média diária'),
+    'KPIs trazem comprometimento e média diária');
+  assert.ok(/Maior saída<\/span><span class="kpi-val">Aluguel<\/span>[\s\S]*R\$ 1\.200,00/.test(resumoHtml),
+    'maior saída usa o lançamento de maior valor');
+  assert.ok(resumoHtml.includes('Moradia') && resumoHtml.includes('71%'),
+    'categoria top do mês com sua participação nas saídas');
+  assert.strictEqual(els['insights'].hidden, false, 'grid de KPIs visível com dados');
 
   // tema: claro por padrão no mock
   assert.strictEqual(global.document.documentElement.dataset.tema, 'claro', 'tema claro default');
@@ -183,6 +195,17 @@ setTimeout(() => {
   // (4) visualizar() (troca de aba) preservada após remoção do bloco Pix
   assert.ok(/function visualizar\(viz\)/.test(appJs) && appJs.includes("visualizar('fin')"),
     'visualizar() preservada e chamada no boot');
+
+  // ===== dashboard enxuto: barra de proporção + KPIs (sem rosca nem caixas) =====
+  assert.ok(!appJs.includes('pizza-grafico') && !appJs.includes('pizza-centro') &&
+    !appJs.includes('conic-gradient'), 'rosca do dashboard removida do JS');
+  assert.ok(!indexHtml.includes('pizza') && indexHtml.includes('id="barra-dist"') &&
+    indexHtml.includes('aria-hidden="true"'), 'HTML do dashboard tem só barra decorativa + KPIs');
+  assert.ok(appJs.includes('function renderBarra') && appJs.includes('function renderKpis') &&
+    appJs.includes('renderBarra(totE, totS)'), 'render do resumo (barra + KPIs) presente');
+  assert.ok(appJs.includes('Sem movimentos neste mês.'), 'estado vazio da barra tem texto próprio');
+  assert.ok(appJs.includes('box.hidden = !html.length'), 'grid de KPIs se esconde sem dados');
+  assert.ok(!appJs.includes('Balanço negativo'), 'aviso de balanço negativo não duplica o hero');
 
   // ===== verificação do toggle "pago/enviado ✓" (só despesas Dízimo/Custos) =====
   const linhaDizimo = listaHtml.slice(listaHtml.indexOf('Dízimo (venda de chaveiros)'), listaHtml.indexOf('Dízimo (venda de chaveiros)') + 300);

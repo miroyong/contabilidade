@@ -32,7 +32,8 @@ function setup(fetchFn) {
     'meses-list','aviso-mes','btn-novo-fab','filtro-tipo','filtro-categoria','filtro-conta',
     'filtro-busca','grafico','contador','lista','modal','modal-titulo','f-data',
     'f-descricao','f-categoria','f-conta','f-valor','dl-categorias','chips-conta',
-    'btn-cancelar','btn-novo-mes','toast','form-lancamento','btn-salvar','sync-status'];
+    'btn-cancelar','btn-novo-mes','toast','form-lancamento','btn-salvar','sync-status',
+    'insights','barra-dist','barra-entrada','barra-saida','barra-legenda','comparativo'];
   global.document = {
     getElementById: byId, querySelectorAll: () => [], querySelector: (sel) => makeEl(sel),
     documentElement: { dataset: {} }

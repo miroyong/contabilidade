@@ -634,33 +634,29 @@
   function renderDashboard() {
     var totE = state.entradas.reduce(function (s, l) { return s + l.valor; }, 0);
     var totS = state.saidas.reduce(function (s, l) { return s + l.valor; }, 0);
-    renderPizza(totE, totS);
-    renderInsights(totE, totS);
+    renderBarra(totE, totS);
+    renderKpis(totE, totS);
     renderComparativo();
   }
 
-  function renderPizza(totE, totS) {
-    var pizza = $('pizza-grafico');
-    var rot = $('pizza-rotulos');
+  function renderBarra(totE, totS) {
+    var barra = $('barra-dist');
+    var leg = $('barra-legenda');
     var total = totE + totS;
     if (total <= 0) {
-      pizza.style.background = '#e5e7eb';
-      pizza.innerHTML = '<div class="pizza-centro">sem<br>movimento</div>';
-      rot.innerHTML = '';
+      $('barra-entrada').style.width = '0%';
+      $('barra-saida').style.width = '0%';
+      leg.innerHTML = '<span class="vazio">Sem movimentos neste mês.</span>';
       return;
     }
     var pctE = Math.round(totE / total * 100);
-    var pctS = 100 - pctE;
-    var escuro = document.documentElement.dataset.tema === 'escuro';
-    var corE = escuro ? '#4ade80' : '#16a34a';
-    var corS = escuro ? '#f87171' : '#dc2626';
-    pizza.style.background = 'conic-gradient(' + corE + ' 0 ' + pctE + '%, ' + corS + ' ' + pctE + '% 100%)';
-    pizza.innerHTML = '<div class="pizza-centro">' + pctE + '%<br>entradas</div>';
-    rot.innerHTML = '<div><b class="verde">▲ ' + fmtBRL.format(totE) + '</b> (' + pctE + '%)</div>' +
-      '<div><b class="vermelho">▼ ' + fmtBRL.format(totS) + '</b> (' + pctS + '%)</div>';
+    $('barra-entrada').style.width = pctE + '%';
+    $('barra-saida').style.width = (100 - pctE) + '%';
+    leg.innerHTML = '<span class="e">▲ <b>' + fmtBRL.format(totE) + '</b> · ' + pctE + '%</span>' +
+      '<span class="s"><b>' + fmtBRL.format(totS) + '</b> ▼ · ' + (100 - pctE) + '%</span>';
   }
 
-  function renderInsights(totE, totS) {
+  function renderKpis(totE, totS) {
     var box = $('insights');
     var html = [];
     var porCat = {};
@@ -679,28 +675,39 @@
     });
     var maior = saidasInsight.slice().sort(function (a, b) { return b.valor - a.valor; })[0];
 
+    function kpi(rot, val, sub, extra) {
+      html.push('<div class="kpi' + (extra ? ' ' + extra : '') + '">' +
+        '<span class="kpi-rot">' + rot + '</span>' +
+        '<span class="kpi-val">' + val + '</span>' +
+        (sub ? '<span class="kpi-sub">' + sub + '</span>' : '') + '</div>');
+    }
+
     if (topCat && topCat.valor > 0) {
-      html.push('<div class="insight">🎯 Categoria top: <b>' + esc(topCat.nome) + '</b> — ' +
-        fmtBRL.format(topCat.valor) + ' (' + Math.round(topCat.valor / totS * 100) + '% das saídas)</div>');
+      kpi('Categoria top', esc(topCat.nome), fmtBRL.format(topCat.valor) + ' · ' +
+        Math.round(topCat.valor / totS * 100) + '% das saídas');
     }
     if (maior && maior.valor > 0) {
-      html.push('<div class="insight">💸 Maior saída: <b>' + esc(maior.descricao) + '</b> — ' + fmtBRL.format(maior.valor) + '</div>');
+      kpi('Maior saída', esc(maior.descricao), fmtBRL.format(maior.valor));
     }
     if (totE > 0) {
       var comp = Math.round(totS / totE * 100);
-      html.push('<div class="insight">📉 Comprometimento: <b class="' + (comp >= 100 ? 'neg' : 'pos') + '">' +
-        comp + '%</b> da renda em saídas' + (comp >= 100 ? ' ⚠️' : '') + '</div>');
+      kpi('Comprometimento', comp + '%' + (comp >= 100 ? ' ⚠️' : ''), 'das entradas em saídas',
+        comp >= 100 ? 'neg' : 'pos');
     }
     if (totS > 0) {
-      var dias = new Date().getDate();
-      html.push('<div class="insight">📅 Média diária: <b>' + fmtBRL.format(totS / dias) + '</b> de gasto</div>');
+      kpi('Média diária', fmtBRL.format(totS / new Date().getDate()), 'de gasto');
     }
-    if (totE - totS < 0) {
-      html.push('<div class="insight">🚨 <b class="neg">Balanço negativo</b> de ' +
-        fmtBRL.format(Math.abs(totE - totS)) + '</div>');
+
+    box.innerHTML = html.length ? html.join('') : '';
+    box.hidden = !html.length;
+    if (!html.length) return;
+    var celulas = box.querySelectorAll ? box.querySelectorAll('.kpi-val') : [];
+    for (var i = 0; i < celulas.length; i++) {
+      if (celulas[i].scrollWidth > celulas[i].clientWidth) {
+        var pai = celulas[i].parentNode;
+        if (pai) pai.title = celulas[i].textContent;
+      }
     }
-    if (!html.length) html.push('<div class="insight">Sem dados suficientes para insights ainda.</div>');
-    box.innerHTML = html.join('');
   }
 
   var compState = { mes: null, dados: null };
@@ -733,12 +740,13 @@
       return Math.round((atual - ant) / ant * 100);
     }
     var partes = [];
+    function pct(d) { return d === 'novo' ? 'novo' : (d >= 0 ? '+' + d : String(d)) + '%'; }
     var dE = delta(tE, aT);
-    if (dE !== null) partes.push('Entradas ' + (dE === 'novo' ? 'novas' : (dE >= 0 ? '+' + dE : dE) + '%'));
+    if (dE !== null) partes.push('▲ ' + pct(dE));
     var dS = delta(tS, aS);
-    if (dS !== null) partes.push('Saídas ' + (dS === 'novo' ? 'novas' : (dS >= 0 ? '+' + dS : dS) + '%'));
+    if (dS !== null) partes.push('▼ ' + pct(dS));
     if (!partes.length) { box.innerHTML = ''; return; }
-    box.innerHTML = '📈 vs ' + esc(nomeAnt) + ': ' + partes.join(' · ');
+    box.innerHTML = 'vs ' + esc(nomeAnt) + ': ' + partes.join(' · ');
   }
 
   function limparFiltros() {

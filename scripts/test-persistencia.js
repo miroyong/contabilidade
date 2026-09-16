@@ -46,7 +46,8 @@ function boot(failServer) {
     'btn-novo-fab', 'filtro-tipo', 'filtro-categoria', 'filtro-conta', 'filtro-busca', 'grafico',
     'contador', 'lista', 'modal', 'modal-titulo', 'f-data', 'f-descricao', 'f-categoria',
     'f-conta', 'f-valor', 'dl-categorias', 'chips-conta', 'btn-cancelar', 'btn-novo-mes',
-    'toast', 'form-lancamento', 'btn-salvar', 'pizza-grafico', 'insights', 'sync-status'];
+    'toast', 'form-lancamento', 'btn-salvar', 'barra-entrada', 'barra-saida', 'barra-legenda',
+    'comparativo', 'sync-status'];
   ids.forEach(i => byId(i));
   global.document = {
     getElementById: byId,
