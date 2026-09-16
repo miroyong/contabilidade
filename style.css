@@ -562,6 +562,8 @@ dialog {
   border-radius: 20px;
   padding: 0;
   width: min(94vw, 430px);
+  /* o reset universal (*) zera o margin: auto que o navegador usa para centralizar */
+  margin: auto;
   background: var(--card);
   color: var(--text);
   box-shadow: var(--shadow-lg);
