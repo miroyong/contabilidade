@@ -252,6 +252,15 @@
     return d.getFullYear() + '-' + mm + '-' + dd;
   }
 
+  function mesDaData(iso) {
+    var meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    var partes = String(iso || '').split('-');
+    var ano = Number(partes[0]);
+    var mes = Number(partes[1]);
+    return ano && mes >= 1 && mes <= 12 ? meses[mes - 1] : state.mes;
+  }
+
   function fmtDataBR(iso) {
     if (!iso) return '';
     var p = String(iso).split('-');
@@ -722,6 +731,14 @@
     var eraEdicao = !!editando;
     var tipo = dados.tipo;
     var mudouTipo = eraEdicao && editando.tipo !== tipo;
+    var mesDestino = eraEdicao ? state.mes : mesDaData(dados.data);
+
+    if (!eraEdicao && mesDestino !== state.mes) {
+      state.mes = mesDestino;
+      state.existe = true;
+      if (state.meses.indexOf(mesDestino) < 0) state.meses.push(mesDestino);
+      state.meses.sort();
+    }
 
     // preserva a marca "✓" (pago/enviado) ao editor uma despesa já marcada:
     // a caixa de edição mostra sem o prefixo, mas ao salvar mantemos a marca
@@ -771,7 +788,7 @@
     // o usuário vê o erro e o cache NÃO sai cheio. Mudar o tipo de um item:
     // como na planilha entrada/saída ficam em colunas diferentes, faz-se
     // ADICIONAR no tipo novo + EXCLUIR no tipo antigo (serializado).
-    var base = { mes: state.mes };
+    var base = { mes: mesDestino };
     var prom;
     if (eraEdicao && !mudouTipo) {
       prom = chamar('atualizar', Object.assign({}, base, editando, dados));
@@ -788,7 +805,11 @@
           return chamar('excluir', { mes: state.mes, tipo: editando.tipo, linha: editando.linha });
         });
     } else {
-      prom = chamar('adicionar', Object.assign({}, base, dados));
+      prom = chamar('novoMes', { mes: mesDestino })
+        .then(function (r) {
+          if (!r.ok) return r;
+          return chamar('adicionar', Object.assign({}, base, dados));
+        });
     }
 
     prom.then(function (r) {
