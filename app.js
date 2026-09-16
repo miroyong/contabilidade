@@ -494,7 +494,8 @@
     av.innerHTML = 'A aba <b>' + esc(state.mes) + '</b> ainda não existe. ' +
       '<button class="btn-criar-mes">Criar aba agora</button>';
     var btn = av.querySelector('.btn-criar-mes');
-    btn.style.cssText = 'margin-left:6px;background:var(--azul);color:#fff;border:none;' +
+    // --sel-b é o verde escuro do tema (mesmo tom do .chip.ativo) — contraste AA com texto branco
+    btn.style.cssText = 'margin-left:6px;background:var(--sel-b);color:#fff;border:none;' +
       'border-radius:8px;padding:4px 10px;font-weight:600;cursor:pointer;';
     btn.addEventListener('click', function () { criarMes(state.mes); });
   }
@@ -782,6 +783,8 @@
     state.filtro = { tipo: 'todos', categoria: '', conta: '', busca: '' };
     state.limiteLista = LISTA_INICIAL;
     $('filtro-tipo').value = 'todos';
+    $('filtro-conta').value = '';
+    $('filtro-categoria').value = '';
     $('filtro-busca').value = '';
   }
 
@@ -965,6 +968,7 @@
     state[tipo === 'entrada' ? 'entradas' : 'saidas'] =
       (tipo === 'entrada' ? state.entradas : state.saidas)
         .filter(function (l) { return l.linha !== linha; });
+    state.limiteLista = LISTA_INICIAL; // lista encurtou: sem "Mostrar menos" fantasma
     salvarCacheMes();
     renderTudo();
     toast('Excluído!');
