@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon.svg">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=42">
+<link rel="stylesheet" href="style.css?v=43">
 </head>
 <body>
 
@@ -186,7 +186,7 @@
     </label>
     <div class="chips-rapido-box" id="chips-categoria" hidden></div>
     <label>Conta
-      <input type="text" id="f-conta" list="dl-contas" placeholder="Ex.: Pix / Cartão">
+      <input type="text" id="f-conta" list="dl-contas" placeholder="Ex.: Pix / Cartão ou Dinheiro">
     </label>
     <div class="chips-rapido-box" id="chips-conta" hidden></div>
     <label>Valor (R$)
@@ -205,12 +205,12 @@
 
 <div id="toast" class="toast" hidden></div>
 
-<script src="config.js?v=42"></script>
-<script src="app.js?v=42"></script>
+<script src="config.js?v=43"></script>
+<script src="app.js?v=43"></script>
 <script>
   // Registra o service worker (PWA) — falha silenciosa se não suportado/Https.
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js?v=42').catch(function () {});
+    navigator.serviceWorker.register('service-worker.js?v=43').catch(function () {});
   }
 </script>
 </body>
