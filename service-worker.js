@@ -4,14 +4,14 @@
  * instalar/fazer update, pré-grava os assets atuais.
  * Suba VER a cada deploy para forçar refresh do shell.
  */
-const VER = 'contabilidade-v38';
+const VER = 'contabilidade-v39';
 const CACHE = VER;
 const PRECACHE = [
   './',
   './index.html',
-  './style.css?v=38',
-  './config.js?v=38',
-  './app.js?v=38',
+  './style.css?v=39',
+  './config.js?v=39',
+  './app.js?v=39',
   './manifest.webmanifest',
   './icons/favicon.svg',
   './icons/icon-192.png',
@@ -44,6 +44,20 @@ self.addEventListener('fetch', (event) => {
   // API do Supabase / qualquer origem externa: network-only.
   // Não intercepta para nunca servir dados de lançamento desatualizados.
   if (url.origin !== self.location.origin) return;
+
+  // Busca a página atual primeiro para que deploys não fiquem presos no shell antigo.
+  if (req.mode === 'navigate' || url.pathname.endsWith('/index.html')) {
+    event.respondWith(
+      fetch(req).then((resp) => {
+        if (resp && resp.status === 200) {
+          const copy = resp.clone();
+          caches.open(CACHE).then((cache) => cache.put(req, copy));
+        }
+        return resp;
+      }).catch(() => caches.match(req))
+    );
+    return;
+  }
 
   // Apenas os assets do app shell (mesmo origin). Cache-first com
   // actualização em background (stale-while-revalidate leve).
