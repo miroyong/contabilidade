@@ -395,13 +395,15 @@
       });
   }
 
-  // contas disponíveis: apenas Pix e Físico (sempre presentes)
+  // contas do filtro: canônicas (Pix / Dinheiro) + legadas/estranhas ainda não cobertas
   function contasOpcoes() {
-    var fixas = CONTAS.slice();
+    var opts = CONTAS.slice();
+    var baldes = opts.map(function (c) { return contaChave(c); });
     state.contas.forEach(function (c) {
-      if (fixas.indexOf(c) < 0 && contaChave(c)) fixas.push(c); // legado ganha a versão canônica
+      var k = contaChave(c) || c; // conta conhecida entra pelo balde canônico (sem duplicar)
+      if (opts.indexOf(k) < 0 && baldes.indexOf(k) < 0) { opts.push(k); baldes.push(k); }
     });
-    return fixas;
+    return opts;
   }
 
   function preencherDatalists() {
@@ -421,13 +423,15 @@
     renderLista();
   }
 
-  var CONTAS = ['Pix', 'Físico'];
+  var CONTAS = ['Pix', 'Dinheiro'];
 
-  // normaliza qualquer nome de conta legado para "Pix" ou "Físico"
+  // normaliza qualquer nome de conta (novo ou legado) para um dos dois baldes:
+  // 'Pix' (Pix / Cartão) e 'Físico' (Dinheiro + legado Físico, o dinheiro em mãos)
   function contaChave(nome) {
     var s = String(nome || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     if (s.indexOf('pix') >= 0) return 'Pix';
     if (s.indexOf('fisic') >= 0) return 'Físico';
+    if (s.indexOf('dinheiro') >= 0) return 'Físico';
     return null; // não entra no breakdown
   }
 
@@ -539,7 +543,12 @@
     todos = todos.filter(function (l) {
       if (f.tipo !== 'todos' && l._tipo !== f.tipo) return false;
       if (f.categoria && l.categoria !== f.categoria) return false;
-      if (f.conta && l.conta !== f.conta) return false;
+      if (f.conta) {
+        // compara por balde: "Pix / Cartão" conta como Pix, "Físico" (legado) como Dinheiro
+        var k = contaChave(l.conta);
+        var fk = contaChave(f.conta);
+        if (fk ? k !== fk : l.conta !== f.conta) return false;
+      }
       if (f.busca) {
         var termo = f.busca.toLowerCase();
         var descricao = l.descricao.toLowerCase();

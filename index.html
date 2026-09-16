@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon.svg">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=52">
+<link rel="stylesheet" href="style.css?v=53">
 </head>
 <body>
 
@@ -121,7 +121,7 @@
         <span class="saldo-item-valor" id="saldo-pix">R$ 0,00</span>
       </div>
       <div class="saldo-item">
-        <span class="saldo-item-nome">Físico</span>
+        <span class="saldo-item-nome">Dinheiro</span>
         <span class="saldo-item-valor" id="saldo-fisico">R$ 0,00</span>
       </div>
     </div>
@@ -230,12 +230,12 @@
 
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="config.js?v=52"></script>
-<script src="app.js?v=52"></script>
+<script src="config.js?v=53"></script>
+<script src="app.js?v=53"></script>
 <script>
   // Registra o service worker (PWA) — falha silenciosa se não suportado/Https.
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js?v=52').catch(function () {});
+    navigator.serviceWorker.register('service-worker.js?v=53').catch(function () {});
   }
 </script>
 </body>

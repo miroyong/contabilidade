@@ -68,13 +68,13 @@ const hoje = ano + '-' + mm + '-' + pad2(agora.getDate());
 
 // ---------- fetch mock: responde como o PostgREST do Supabase --------------
 const ROWS = [
-  { num: 10, tipo: 'entrada', data: d(1), descricao: 'Salário', categoria: 'Salário', conta: 'Pix', valor: 2500 },
+  { num: 10, tipo: 'entrada', data: d(1), descricao: 'Salário', categoria: 'Salário', conta: 'Pix / Cartão', valor: 2500 },
   { num: 20, tipo: 'entrada', data: d(15), descricao: 'Freela', categoria: 'Serviços', conta: 'Físico', valor: 300 },
   { num: 30, tipo: 'saida', data: d(2), descricao: 'Dízimo (venda de chaveiros)', categoria: 'Dízimo', conta: 'Pix', valor: 500 },
   { num: 40, tipo: 'saida', data: d(10), descricao: 'Aluguel', categoria: 'Moradia', conta: 'Físico', valor: 1200 }
 ];
 const OP_ROWS = [
-  { categoria: 'Salário', conta: 'Pix' }, { categoria: 'Serviços', conta: 'Físico' },
+  { categoria: 'Salário', conta: 'Pix / Cartão' }, { categoria: 'Serviços', conta: 'Físico' },
   { categoria: 'Dízimo', conta: 'Pix' }, { categoria: 'Moradia', conta: 'Físico' }
 ];
 
@@ -131,18 +131,32 @@ setTimeout(() => {
   assert.strictEqual(norm(els['saldo-entradas'].textContent), 'R$ 2.800,00', 'total entradas');
   assert.strictEqual(norm(els['saldo-saidas'].textContent), 'R$ 1.700,00', 'total saídas');
 
-  // novo: balanço por conta (Pix / Físico); Total só no saldo-valor em cima
+  // novo: balanço por conta (Pix / Dinheiro); Total só no saldo-valor em cima
   assert.strictEqual(norm(els['saldo-pix'].textContent), 'R$ 2.000,00', 'balanço Pix (2500-500)');
-  assert.strictEqual(norm(els['saldo-fisico'].textContent), '-R$ 900,00', 'balanço Físico (300-1200)');
-  assert.ok(els['saldo-fisico'].className.includes('negativo'), 'Físico negativo');
+  assert.strictEqual(norm(els['saldo-fisico'].textContent), '-R$ 900,00', 'balanço Dinheiro (300-1200)');
+  assert.ok(els['saldo-fisico'].className.includes('negativo'), 'caixa negativo');
   assert.ok(els['saldo-pix'].className.includes('positivo'), 'Pix positivo');
 
   // Conta: somente os botões Pix / Cartão e Dinheiro; filtro preserva legado
   assert.ok(appJs.includes("montar(boxConta, ['Pix / Cartão', 'Dinheiro'])"),
     'botões de Conta limitados a Pix / Cartão e Dinheiro');
-  assert.ok(els['filtro-conta'].innerHTML.includes('"Pix"') && els['filtro-conta'].innerHTML.includes('"Físico"'),
-    'filtro Conta com Pix/Físico');
+  assert.ok(els['filtro-conta'].innerHTML.includes('"Pix"') && els['filtro-conta'].innerHTML.includes('"Dinheiro"'),
+    'filtro Conta com os nomes canônicos Pix/Dinheiro');
+  assert.ok(!els['filtro-conta'].innerHTML.includes('"Físico"'),
+    'conta legada "Físico" não vira opção separada (cai no balde Dinheiro)');
   assert.ok(!els['filtro-conta'].innerHTML.includes('Cartão de Crédito'), 'filtro sem contas legado');
+
+  // filtro por balde: "Dinheiro" alcança o legado "Físico"; "Pix" alcança "Pix / Cartão"
+  els['filtro-tipo'].value = 'todos';
+  const filtrarConta = (v) => { els['filtro-conta'].value = v; els['filtro-conta']._cb['change'](); };
+  filtrarConta('Dinheiro');
+  assert.strictEqual(els['contador'].textContent, '2', 'filtro Dinheiro pega os lançamentos de caixa (legado Físico)');
+  assert.ok(!norm(els['lista'].innerHTML).includes('Salário'), 'filtro Dinheiro esconde os lançamentos Pix');
+  filtrarConta('Pix');
+  assert.ok(norm(els['lista'].innerHTML).includes('Salário') &&
+    norm(els['lista'].innerHTML).includes('Dízimo'), 'filtro Pix pega "Pix / Cartão" + Pix');
+  filtrarConta(''); // limpa para os demais asserts
+  assert.strictEqual(els['contador'].textContent, '4', 'sem filtro de conta a lista volta ao total');
 
   const mesesHtml = els['meses-list'].innerHTML;
   assert.ok(mesesHtml.includes(curName) && mesesHtml.includes(prevName), 'chips de mês');
@@ -198,6 +212,18 @@ setTimeout(() => {
   // (4) visualizar() (troca de aba) preservada após remoção do bloco Pix
   assert.ok(/function visualizar\(viz\)/.test(appJs) && appJs.includes("visualizar('fin')"),
     'visualizar() preservada e chamada no boot');
+
+  // ===== contas: um balde para Pix e outro para o caixa (Dinheiro/Físico) =====
+  assert.ok(appJs.includes("var CONTAS = ['Pix', 'Dinheiro'];"),
+    'CONTAS usa os nomes canônicos atuais (Pix / Dinheiro)');
+  assert.ok(appJs.includes("if (s.indexOf('dinheiro') >= 0) return 'Físico';"),
+    'contaChave reconhece "Dinheiro" e joga no balde de caixa (Físico)');
+  assert.ok(/var k = contaChave\(l\.conta\);\s*var fk = contaChave\(f\.conta\);\s*if \(fk \? k !== fk : l\.conta !== f\.conta\) return false;/.test(appJs),
+    'filtro de conta compara pelo balde (contaChave) nos dois lados');
+  assert.ok(appJs.includes('var k = contaChave(c) || c;'),
+    'contasOpcoes converte conta conhecida no balde canônico (sem duplicar)');
+  assert.ok(/<span class="saldo-item-nome">Dinheiro<\/span>\s*<span class="saldo-item-valor" id="saldo-fisico">/.test(indexHtml),
+    'hero: célula do caixa se chama Dinheiro (id saldo-fisico preservado)');
 
   // ===== dashboard enxuto: barra de proporção + KPIs (sem rosca nem caixas) =====
   assert.ok(!appJs.includes('pizza-grafico') && !appJs.includes('pizza-centro') &&
