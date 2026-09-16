@@ -505,7 +505,15 @@
       if (f.tipo !== 'todos' && l._tipo !== f.tipo) return false;
       if (f.categoria && l.categoria !== f.categoria) return false;
       if (f.conta && l.conta !== f.conta) return false;
-      if (f.busca && l.descricao.toLowerCase().indexOf(f.busca.toLowerCase()) < 0) return false;
+      if (f.busca) {
+        var termo = f.busca.toLowerCase();
+        var descricao = l.descricao.toLowerCase();
+        var valorFormatado = fmtBRL.format(l.valor).toLowerCase();
+        var valorNumerico = String(l.valor).replace('.', ',');
+        if (descricao.indexOf(termo) < 0 &&
+        valorFormatado.indexOf(termo) < 0 &&
+        valorNumerico.indexOf(termo) < 0) return false;
+      }
       return true;
     });
 
