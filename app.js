@@ -1237,8 +1237,11 @@
   function chaLancar() {
     var c = state.chaveiros;
     if (!c) return;
-    if (!state.mes) { toast('Selecione/ crie um mês na aba Financeiro antes.'); return; }
-    var base = { mes: state.mes, data: hojeISO() };
+    var data = hojeISO();
+    // a arrecadação não tem campo de data: usa a data de hoje, então pertence
+    // ao mês dessa data (e não ao mês que estiver aberto na aba Financeiro).
+    var mesDestino = mesDaData(data);
+    var base = { mes: mesDestino, data: data };
     var quem = c.nome ? ' — ' + c.nome : '';
     var itens;
     if (c.tipo === 'brownie') {
@@ -1261,25 +1264,36 @@
     if (!itens.length) { toast('Nada a lançar.'); return; }
     $('cha-lancar').disabled = true;
     syncStatus(true, 'lançando…');
-    var prom = Promise.resolve();
-    itens.forEach(function (it) {
-      prom = prom.then(function () {
-        return chamar('adicionar', Object.assign({}, base, it));
+    var prom = chamar('novoMes', { mes: mesDestino }).then(function (r) {
+      if (!r.ok) return r;
+      var p = Promise.resolve();
+      itens.forEach(function (it) {
+        p = p.then(function () {
+          return chamar('adicionar', Object.assign({}, base, it));
+        });
       });
+      return p;
     });
     prom.then(function (r) {
       syncStatus(false);
       if (!r.ok) throw new Error(r.erro || 'não foi possível lançar na planilha.');
-      salvarCacheMes();
-      renderTudo();
-      toast(itens.length + ' lançamento(s) gravados!');
+      if (state.meses.indexOf(mesDestino) < 0) {
+        state.meses.push(mesDestino);
+        state.meses.sort();
+      }
+      toast(itens.length + ' lançamento(s) gravados' + (mesDestino !== state.mes ? ' em ' + mesDestino : '') + '!');
       $('cha-lancar').hidden = true;
       $('cha-resumo').hidden = true;
       ['cha-nome','cha-levou-3d','cha-levou-2d','cha-levou-ab','cha-voltou-3d','cha-voltou-2d','cha-voltou-ab',
        'cha-b-levou','cha-b-voltou',
        'cha-pix','cha-fisico','cha-alimentacao','cha-transporte'].forEach(function (id) { $(id).value = ''; });
       state.chaveiros = null;
-      recarregarMes(); // recarrega o mês para os lançamentos aparecerem
+      if (mesDestino !== state.mes) {
+        selecionarMes(mesDestino); // troca para o mês dono da data e recarrega do servidor
+      } else {
+        salvarCacheMes();
+        recarregarMes(); // recarrega o mês para os lançamentos aparecerem
+      }
       visualizar('fin');
     }).catch(function (e) {
       syncStatus(false);

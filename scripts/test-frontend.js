@@ -63,6 +63,7 @@ const curName = cap(agora.toLocaleDateString('pt-BR', { month: 'long' }));
 const prevName = cap(new Date(ano, agora.getMonth() - 1, 1).toLocaleDateString('pt-BR', { month: 'long' }));
 const mm = pad2(mesNum);
 const d = (dia) => ano + '-' + mm + '-' + pad2(dia);
+const hoje = ano + '-' + mm + '-' + pad2(agora.getDate());
 
 // ---------- fetch mock: responde como o PostgREST do Supabase --------------
 const ROWS = [
@@ -75,6 +76,9 @@ const OP_ROWS = [
   { categoria: 'Salário', conta: 'Pix' }, { categoria: 'Serviços', conta: 'Físico' },
   { categoria: 'Dízimo', conta: 'Pix' }, { categoria: 'Moradia', conta: 'Físico' }
 ];
+
+// corpos dos POSTs em /lancamentos (usado no teste de roteamento por mês)
+const POSTS = [];
 
 function okJson(body, status = 200) {
   return { ok: status >= 200 && status < 300, status,
@@ -89,14 +93,17 @@ global.fetch = (url, opts) => {
   if (table === 'meses') {
     if (q.has('id')) { // verificação de existência do mês
       const id = q.get('id').replace(/^eq\./, '');
-      return Promise.resolve(okJson(id === curName ? [{ id: curName }] : []));
+      return Promise.resolve(okJson(id === curName || id === prevName ? [{ id }] : []));
     }
     return Promise.resolve(okJson([{ id: curName }, { id: prevName }]));
   }
   if (table === 'lancamentos') {
     if (q.get('select') === 'categoria,conta') return Promise.resolve(okJson(OP_ROWS));
     const mes = (q.get('mes_id') || '').replace(/^eq\./, '');
-    if (method === 'POST') return Promise.resolve(okJson([{ ...ROWS[0], num: 99 }], 201));
+    if (method === 'POST') {
+      POSTS.push(JSON.parse((opts && opts.body) || '{}'));
+      return Promise.resolve(okJson([{ ...ROWS[0], num: 99 }], 201));
+    }
     if (method === 'PATCH' || method === 'DELETE') return Promise.resolve(okJson(null, 204));
     return Promise.resolve(okJson(mes === curName ? ROWS : []));
   }
@@ -231,6 +238,33 @@ setTimeout(() => {
   assert.strictEqual(lucroB, '390,00', 'lucro bruto 390 (520-130)');
   assert.strictEqual(lique, '281,00', 'líquido 281 (390-dízimo39-alim50-transp20)');
 
-  console.log('✔ SMOKE TEST DO FRONT-END PASSOU (inclui dashboard, tema e estático)');
-  process.exit(0);
+  // ===== regressão: a arrecadação vai para o mês da data, não para a aba aberta =====
+  // troca a aba aberta para um mês diferente do mês de hoje (mês anterior)
+  global.prompt = () => prevName;
+  byId('btn-novo-mes')._cb['click']();
+  setTimeout(() => {
+    assert.strictEqual(els['saldo-mes'].textContent, prevName,
+      'aba trocada para ' + prevName + ' (diferente do mês de hoje)');
+
+    byId('cha-pix').value = '50,00';
+    byId('cha-calcular')._cb['click']();
+    POSTS.length = 0;
+    byId('cha-lancar')._cb['click']();
+    setTimeout(() => {
+      assert.ok(POSTS.length >= 2, 'arrecadação enviou os lançamentos (' + POSTS.length + ')');
+      const mesDoIso = (iso) => ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho',
+        'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'][Number(String(iso).slice(5, 7)) - 1];
+      POSTS.forEach((b) => {
+        assert.strictEqual(b.data, hoje, 'arrecadação usa a data de hoje');
+        assert.strictEqual(b.mes_id, mesDoIso(b.data),
+          'arrecadação grava no mês da data (' + b.mes_id + ' para ' + b.data + ')');
+        assert.notStrictEqual(b.mes_id, prevName, 'arrecadação NÃO usa o mês da aba aberta');
+      });
+      assert.strictEqual(els['saldo-mes'].textContent, curName,
+        'app muda para o mês da data depois de lançar');
+
+      console.log('✔ SMOKE TEST DO FRONT-END PASSOU (inclui dashboard, tema, estático e mês da arrecadação)');
+      process.exit(0);
+    }, 250);
+  }, 250);
 }, 300);
