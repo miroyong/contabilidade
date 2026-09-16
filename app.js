@@ -268,7 +268,21 @@
   }
 
   function normalizarValorInput(input) {
-    input.value = input.value.replace(/\./g, ',');
+    var valor = String(input.value || '').replace(/R\$/gi, '').replace(/\s/g, '');
+    if (valor.indexOf(',') >= 0) valor = valor.replace(/\./g, '');
+    else valor = valor.replace(/\./g, ',');
+    valor = valor.replace(/[^\d,]/g, '');
+    var partes = valor.split(',');
+    input.value = partes.length > 1 ? partes.shift() + ',' + partes.join('') : valor;
+  }
+
+  function formatarValorInput(input) {
+    normalizarValorInput(input);
+    if (!input.value) return;
+    input.value = parseValor(input.value).toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
   }
 
   function esc(s) {
@@ -1012,6 +1026,7 @@
 
   document.querySelectorAll('.campo-valor').forEach(function (input) {
     input.addEventListener('input', function () { normalizarValorInput(input); });
+    input.addEventListener('blur', function () { formatarValorInput(input); });
   });
 
   ['filtro-tipo', 'filtro-categoria', 'filtro-conta'].forEach(function (id) {
