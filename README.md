@@ -1,14 +1,14 @@
-# Controle Financeiro 💰
+# Controle Financeiro
 
 Aplicação web (HTML/CSS/JS, **sem dependências** e sem build) com backend no
 **Supabase (Postgres)** via REST (PostgREST). Funciona como PWA (offline
 primeiro, com cache local e sincronização) e traz dashboard e relatórios.
 
-- Lançamento rápido de entradas e saídas, com saldo por conta (⚡ Pix / 💵 Físico)
+- Lançamento rápido de entradas e saídas, com saldo por conta (Pix / Cartão e Dinheiro)
 - Extrato com filtros (tipo, categoria, conta, busca)
-- Dashboard: pizza entradas × saídas, insights e comparativo com o mês anterior
-- Editar/excluir lançamentos, marcar "pago/enviado ✓" em despesas (Dízimo/Custos)
-- Aba 🪙 Chaveiros: calcula venda/custo/dízimo/alimentação/transporte e lança tudo
+- Dashboard: barra de proporção entradas × saídas, KPIs do mês e comparativo com o anterior
+- Ações por lançamento (⋯): editar, marcar "pago/enviado" em despesas (Dízimo/Custos) e excluir
+- Aba Arrecadação (Chaveiros/Brownie): calcula venda/custo/dízimo/alimentação/transporte e lança tudo
 - PWA: instala no celular, abre offline e sincroniza quando volta
 
 ## Como funciona
@@ -64,11 +64,11 @@ assets para forçar atualização nos dispositivos.
 - **＋ Novo lançamento**: escolha Entrada/Saída, preencha e Salvar.
   Valor aceita `1.234,56` ou `1234.56`.
 - **Chips de mês**: alternam entre os meses. **＋ (criar mês)** cria um novo.
-- **✏️ / 🗑️**: editar ou excluir um lançamento.
-- **○ / ✓** (despesa Dízimo/Custos): marcar como pago/enviado.
-- **🪙 Chaveiros**: informe quantos levou/voltou e os valores do dia → **Calcular**
+- **⋯** (na linha do lançamento): abre as ações — editar, marcar pago/enviado ou excluir.
+- **Chaveiros / Brownie**: alterna o tipo de arrecadação dentro da aba **Arrecadação**.
+- **Arrecadação**: informe quantos levou/voltou e os valores do dia → **Calcular**
   → **Lançar tudo** (grava entradas de venda e saídas de custo/dízimo/alim/transp).
-- **Dashboard**: pizza, insights e comparativo vs mês anterior.
+- **Dashboard**: barra de proporção, KPIs e comparativo vs mês anterior.
 - **Offline**: a 2ª abertura renderiza do cache local; as ações confirmam só
   quando o servidor responde (sem "fantasma" de lançamento).
 

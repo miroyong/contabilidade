@@ -115,6 +115,7 @@ global.fetch = (url, opts) => {
 global.window.APP_CONFIG = global.window.APP_CONFIG;
 const appJs = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
 const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+const styleCss = fs.readFileSync(path.join(__dirname, '..', 'style.css'), 'utf8');
 // pré-carga: "levou" já salvo em localStorage (estoque do mosquetão do dia anterior)
 memStore['cf_chaLevou'] = JSON.stringify({ '3d': 30, '2d': 20, 'ab': 5 });
 eval(appJs);
@@ -152,7 +153,9 @@ setTimeout(() => {
 
   const listaHtml = norm(els['lista'].innerHTML);
   assert.ok(listaHtml.includes('Dízimo (venda de chaveiros)') && listaHtml.includes('Aluguel') && listaHtml.includes('Salário'), 'lista de lançamentos');
-  assert.ok(listaHtml.includes('data-edit') && listaHtml.includes('data-del'), 'ações editar/excluir');
+  assert.ok(listaHtml.includes('data-mais'), 'cada lançamento tem botão de ações (⋯)');
+  assert.ok(indexHtml.includes('id="modal-acoes"') && indexHtml.includes('data-acao="editar"') &&
+    indexHtml.includes('data-acao="excluir"'), 'folha de ações tem editar/excluir');
   assert.strictEqual(els['contador'].textContent, '4', 'contador de lançamentos');
 
   // dashboard: barra de proporção + KPIs do mês
@@ -207,13 +210,25 @@ setTimeout(() => {
   assert.ok(appJs.includes('box.hidden = !html.length'), 'grid de KPIs se esconde sem dados');
   assert.ok(!appJs.includes('Balanço negativo'), 'aviso de balanço negativo não duplica o hero');
 
+  // ===== UI sem emojis: só ícones SVG de traço fino =====
+  const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}]/u;
+  const semCheck = (s) => s.replace(/✓/g, ''); // ✓ é a marca de pago/enviado (dado + legenda), não emoji
+  assert.ok(!EMOJI.test(semCheck(indexHtml)), 'index.html sem emojis');
+  assert.ok(!EMOJI.test(semCheck(appJs)), 'app.js sem emojis');
+  assert.ok(!EMOJI.test(semCheck(styleCss)), 'style.css sem emojis');
+  assert.ok(appJs.includes('var ICO = {') && appJs.includes('btn.innerHTML = t === \'escuro\' ? ICO.sol : ICO.lua'),
+    'ícones de tema são SVG (ICO.sol / ICO.lua)');
+  assert.ok(styleCss.includes('.icone {') && styleCss.includes('stroke: currentColor'),
+    'classe .icone define os SVGs de traço fino');
+
   // ===== verificação do toggle "pago/enviado ✓" (só despesas Dízimo/Custos) =====
   const linhaDizimo = listaHtml.slice(listaHtml.indexOf('Dízimo (venda de chaveiros)'), listaHtml.indexOf('Dízimo (venda de chaveiros)') + 300);
   const linhaAluguel = listaHtml.slice(listaHtml.indexOf('Aluguel'), listaHtml.indexOf('Aluguel') + 300);
-  assert.ok(linhaDizimo.includes('data-pago'), 'despesa Dízimo tem toggle pago/enviado');
-  assert.ok(!linhaAluguel.includes('data-pago'), 'gasto comum (Moradia) NÃO tem toggle');
-  // entrada não tem toggle
-  assert.ok(listaHtml.split('data-pago').length <= 2, 'apenas a saída Dízimo/Custos tem [data-pago]');
+  assert.ok(linhaDizimo.includes('data-mais'), 'despesa Dízimo tem botão de ações (⋯)');
+  assert.ok(!listaHtml.includes('data-pago') && !listaHtml.includes('data-edit'),
+    'a linha do extrato não tem mais 1-3 botões soltos (ações na folha)');
+  assert.ok(appJs.includes('temTogglePago(item)') && indexHtml.includes('id="acao-pago"'),
+    'toggle pago/enviado vive na folha de ações');
   // helpers da marca existem no código
   assert.ok(appJs.includes("var MARCA = '✓ '") && appJs.includes('function stripMarca') &&
     appJs.includes('function marcarPago') && appJs.includes('function temTogglePago'),
@@ -255,8 +270,8 @@ setTimeout(() => {
   const resumoCha = norm(byId('cha-resumo').innerHTML);
   // 26 vendidos * custo 5 = 130; receita 520; lucro bruto = 390; dízimo = 10% de 390 = 39;
   // líquido = 390 - 39 - 50 - 20 = 281
-  assert.ok(/Alimentação/.test(resumoCha), 'resumo chaveiros mostra Alimentação');
-  assert.ok(/Transporte/.test(resumoCha), 'resumo chaveiros mostra Transporte');
+  assert.ok(/ALIMENTAÇÃO/.test(resumoCha), 'resumo chaveiros mostra Alimentação');
+  assert.ok(/TRANSPORTE/.test(resumoCha), 'resumo chaveiros mostra Transporte');
   const lucroB = (resumoCha.match(/LUCRO BRUTO[^0-9]*([\d.,]+)/) || [])[1];
   const lique = (resumoCha.match(/LÍQUIDO[^0-9]*([\d.,]+)/) || [])[1];
   assert.strictEqual(lucroB, '390,00', 'lucro bruto 390 (520-130)');

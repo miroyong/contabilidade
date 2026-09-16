@@ -300,11 +300,22 @@
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
+  // ------------------------------------------------------------ ícones
+  // SVG inline (traço 1.5) — a interface não usa emojis.
+  var SVG_ICONE = '<svg class="icone" viewBox="0 0 24 24" aria-hidden="true" focusable="false">';
+  var ICO = {
+    sol: SVG_ICONE + '<circle cx="12" cy="12" r="4"/><path d="M12 2.8v2.2M12 19v2.2M2.8 12h2.2M19 12h2.2M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M5.6 18.4l1.6-1.6M16.8 7.2l1.6-1.6"/></svg>',
+    lua: SVG_ICONE + '<path d="M20.6 14.7A8.6 8.6 0 0 1 9.3 3.4a7.1 7.1 0 1 0 11.3 11.3Z"/></svg>',
+    mais: '<svg class="icone cheio" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>',
+    baixo: SVG_ICONE + '<path d="M6 9.5l6 6 6-6"/></svg>',
+    cima: SVG_ICONE + '<path d="M6 14.5l6-6 6 6"/></svg>'
+  };
+
   // ------------------------------------------------------------ tema
   function aplicarTema(t) {
     document.documentElement.dataset.tema = t;
     var btn = $('btn-tema');
-    if (btn) btn.textContent = t === 'escuro' ? '☀️' : '🌙';
+    if (btn) btn.innerHTML = t === 'escuro' ? ICO.sol : ICO.lua;
     cacheSet('tema', t);
   }
 
@@ -571,28 +582,29 @@
     box.innerHTML = visiveis.map(function (l) {
       var tipo = l._tipo;
       var marcado = (tipo === 'saida' && temTogglePago(l) && l.descricao.indexOf('✓') === 0);
-      var acoes = '<button class="btn-icone" data-edit="' + tipo + ':' + l.linha + '" title="Editar">✏️</button>' +
-        '<button class="btn-icone" data-del="' + tipo + ':' + l.linha + '" title="Excluir">🗑️</button>';
-      if (temTogglePago(l)) {
-        acoes = '<button class="btn-icone lanc-pago ' + (marcado ? 'marcado' : '') + '" data-pago="' + l.linha +
-          '" title="' + (marcado ? 'Pago/enviado ✓ (toque para desmarcar)' : 'Marcar como pago/enviado') + '">' +
-          (marcado ? '✓' : '○') + '</button>' + acoes;
-      }
+      var det = l.categoria || 'Sem categoria';
+      if (l.conta) det += ' · ' + l.conta;
+      var desc = stripMarca(l.descricao);
       return '<div class="lanc">' +
         '<div class="lanc-data">' + fmtDataBR(l.data) + '</div>' +
-        '<div class="lanc-desc">' + (marcado ? '<span class="marcado-rot">✓</span> ' : '') + esc(stripMarca(l.descricao)) + '</div>' +
+        '<div class="lanc-info">' +
+          '<span class="lanc-desc" title="' + esc(desc) + '">' +
+            (marcado ? '<span class="marcado-rot">✓</span> ' : '') + esc(desc) +
+          '</span>' +
+          '<span class="lanc-det" title="' + esc(det) + '">' + esc(det) + '</span>' +
+        '</div>' +
         '<div class="lanc-valor ' + tipo + '">' + (tipo === 'entrada' ? '+' : '−') + ' ' +
           fmtBRL.format(l.valor) + '</div>' +
-        '<div class="lanc-acoes">' + acoes + '</div>' +
-        '<div class="lanc-det">' + esc(l.categoria || '—') + ' · ' + esc(l.conta || '—') + '</div>' +
+        '<button type="button" class="lanc-mais" data-mais="' + tipo + ':' + l.linha + '" ' +
+          'aria-label="Ações de ' + esc(desc) + '">' + ICO.mais + '</button>' +
       '</div>';
     }).join('');
 
     if (restantes > 0) {
       box.innerHTML += '<button class="btn-ver-mais" data-ver-mais type="button">Mostrar todos os ' +
-        todos.length + ' lançamentos ↓</button>';
+        todos.length + ' lançamentos ' + ICO.baixo + '</button>';
     } else if (state.limiteLista > LISTA_INICIAL) {
-      box.innerHTML += '<button class="btn-ver-mais" data-ver-menos type="button">Mostrar menos ↑</button>';
+      box.innerHTML += '<button class="btn-ver-mais" data-ver-menos type="button">Mostrar menos ' + ICO.cima + '</button>';
     }
 
     var btnVerMais = box.querySelector('[data-ver-mais]');
@@ -610,24 +622,32 @@
       });
     }
 
-    Array.prototype.forEach.call(box.querySelectorAll('[data-edit]'), function (b) {
+    Array.prototype.forEach.call(box.querySelectorAll('[data-mais]'), function (b) {
       b.addEventListener('click', function () {
-        var p = b.dataset.edit.split(':');
-        abrirModal('editar', p[0], Number(p[1]));
+        var p = b.dataset.mais.split(':');
+        abrirAcoes(p[0], Number(p[1]));
       });
     });
-    Array.prototype.forEach.call(box.querySelectorAll('[data-del]'), function (b) {
-      b.addEventListener('click', function () {
-        var p = b.dataset.del.split(':');
-        excluir(p[0], Number(p[1]));
-      });
-    });
-    Array.prototype.forEach.call(box.querySelectorAll('[data-pago]'), function (b) {
-      b.addEventListener('click', function () {
-        var linha = Number(b.dataset.pago);
-        marcarPago('saida', linha);
-      });
-    });
+  }
+
+  // Folha de ações da linha (Editar / Pago / Excluir) — mantém a lista com uma linha por lançamento.
+  var acaoCtx = null;
+  function abrirAcoes(tipo, linha) {
+    var lista = tipo === 'entrada' ? state.entradas : state.saidas;
+    var item = lista.filter(function (l) { return l.linha === linha; })[0];
+    if (!item) return;
+    var marcado = item.descricao.indexOf(MARCA) === 0;
+    acaoCtx = { tipo: tipo, linha: linha, marcado: marcado };
+    $('acoes-desc').textContent = stripMarca(item.descricao);
+    $('acoes-det').textContent = fmtDataBR(item.data) + '/' + String(item.data).slice(0, 4) + ' · ' +
+      (item.categoria || 'Sem categoria') + ' · ' + fmtBRL.format(item.valor) +
+      (item.conta ? ' · ' + item.conta : '');
+    var btnPago = $('acao-pago');
+    var podePago = tipo === 'saida' && temTogglePago(item);
+    btnPago.hidden = !podePago;
+    btnPago.textContent = marcado ? 'Desmarcar pago/enviado' : 'Marcar como pago/enviado';
+    var dlg = $('modal-acoes');
+    if (dlg && dlg.showModal) dlg.showModal();
   }
 
   // ------------------------------------------------------------ dashboard
@@ -691,7 +711,7 @@
     }
     if (totE > 0) {
       var comp = Math.round(totS / totE * 100);
-      kpi('Comprometimento', comp + '%' + (comp >= 100 ? ' ⚠️' : ''), 'das entradas em saídas',
+      kpi('Comprometimento', comp + '%', 'das entradas em saídas',
         comp >= 100 ? 'neg' : 'pos');
     }
     if (totS > 0) {
@@ -1205,6 +1225,13 @@
     $('btn-novo-fab').hidden = (viz === 'cha');
   }
 
+  // Helper do resumo da arrecadação (rótulo + valor + detalhe opcional).
+  function chaLinha(rot, val, sub, cls) {
+    return '<div class="linha' + (cls ? ' ' + cls : '') + '">' +
+      '<span class="linha-rot">' + rot + (sub ? '<small>' + sub + '</small>' : '') + '</span>' +
+      '<span class="linha-val">' + val + '</span></div>';
+  }
+
   function chaCalcular() {
     if (CHA_TIPO === 'brownie') { chaCalcularBrownie(); return; }
     var vendas = {
@@ -1229,20 +1256,21 @@
     state.chaveiros = { nome: nome, vendas: vendas, custo: custo, receita: receita, receitaPix: receitaPix, receitaFis: receitaFis, dizimo: dizimo, alimentacao: alimentacao, transporte: transporte };
     var lucro = receita - custo;                                        // bruto (antes do dízimo)
     var liquido = Math.max(0, lucro - dizimo - alimentacao - transporte); // o que sobra após dízimo + alimentação + transporte
-    var linhas = [];
-    if (nome) linhas.push('Quem arrecadou: <b>' + nome + '</b>');
-    linhas = linhas.concat([
-      'Vendidos: 3D <b>' + vendas['3d'] + '</b> · 2D <b>' + vendas['2d'] + '</b> · Abridor <b>' + vendas['ab'] + '</b>',
-      'Total do dia <b>' + chaBRL(receita) + '</b> (Pix ' + chaBRL(receitaPix) + ' · Físico ' + chaBRL(receitaFis) + ')',
-      'Custo da mercadoria <b>' + chaBRL(custo) + '</b>',
-      'Dízimo (10% da margem) <b>' + chaBRL(dizimo) + '</b>',
-      'Alimentação <b>' + chaBRL(alimentacao) + '</b>',
-      'Transporte <b>' + chaBRL(transporte) + '</b>'
-    ]).map(function (l) { return '<div class="linha">' + l + '</div>'; }).join('');
+    var vendidos = vendas['3d'] + vendas['2d'] + vendas['ab'];
+    var linhas = '';
+    if (nome) linhas += chaLinha('QUEM ARRECADOU', nome);
+    linhas += chaLinha('VENDIDOS', String(vendidos),
+      '3D ' + vendas['3d'] + ' · 2D ' + vendas['2d'] + ' · Abridor ' + vendas['ab']);
+    linhas += chaLinha('TOTAL DO DIA', chaBRL(receita),
+      'Pix ' + chaBRL(receitaPix) + ' · Físico ' + chaBRL(receitaFis));
+    linhas += chaLinha('CUSTO DOS MATERIAIS', chaBRL(custo));
+    linhas += chaLinha('DÍZIMO (10% DA MARGEM)', chaBRL(dizimo));
+    linhas += chaLinha('ALIMENTAÇÃO', chaBRL(alimentacao));
+    linhas += chaLinha('TRANSPORTE', chaBRL(transporte));
     var lucroCls = lucro >= 0 ? 'lucro-positivo' : 'lucro-negativo';
     var liquidoCls = liquido >= 0 ? 'lucro-positivo' : 'lucro-negativo';
-    linhas += '<div class="linha tot">LUCRO BRUTO <b class="' + lucroCls + '">' + chaBRL(lucro) + '</b></div>';
-    linhas += '<div class="linha tot">LÍQUIDO (após dízimo) <b class="' + liquidoCls + '">' + chaBRL(liquido) + '</b></div>';
+    linhas += chaLinha('LUCRO BRUTO', '<b class="' + lucroCls + '">' + chaBRL(lucro) + '</b>', '', 'tot');
+    linhas += chaLinha('LÍQUIDO (APÓS DÍZIMO)', '<b class="' + liquidoCls + '">' + chaBRL(liquido) + '</b>', '', 'tot');
     $('cha-resumo').innerHTML = linhas;
     $('cha-resumo').hidden = false;
     $('cha-lancar').hidden = false;
@@ -1269,20 +1297,19 @@
     state.chaveiros = { tipo: 'brownie', nome: nome, vendidos: vendidos, custo: custo, receita: receita, receitaPix: receitaPix, receitaFis: receitaFis, dizimo: dizimo, alimentacao: alimentacao, transporte: transporte };
     var lucro = receita - custo;
     var liquido = Math.max(0, lucro - dizimo - alimentacao - transporte);
-    var linhas = [];
-    if (nome) linhas.push('Quem arrecadou: <b>' + nome + '</b>');
-    linhas = linhas.concat([
-      'Vendidos: brownie <b>' + vendidos + '</b> (custo ' + chaBRL(custoUn) + '/un)',
-      'Total do dia <b>' + chaBRL(receita) + '</b> (Pix ' + chaBRL(receitaPix) + ' · Físico ' + chaBRL(receitaFis) + ')',
-      'Custo dos materiais <b>' + chaBRL(custo) + '</b>',
-      'Dízimo (10% da margem) <b>' + chaBRL(dizimo) + '</b>',
-      'Alimentação <b>' + chaBRL(alimentacao) + '</b>',
-      'Transporte <b>' + chaBRL(transporte) + '</b>'
-    ]).map(function (l) { return '<div class="linha">' + l + '</div>'; }).join('');
+    var linhas = '';
+    if (nome) linhas += chaLinha('QUEM ARRECADOU', nome);
+    linhas += chaLinha('VENDIDOS', String(vendidos) + ' brownie(s)', 'custo ' + chaBRL(custoUn) + '/un');
+    linhas += chaLinha('TOTAL DO DIA', chaBRL(receita),
+      'Pix ' + chaBRL(receitaPix) + ' · Físico ' + chaBRL(receitaFis));
+    linhas += chaLinha('CUSTO DOS MATERIAIS', chaBRL(custo));
+    linhas += chaLinha('DÍZIMO (10% DA MARGEM)', chaBRL(dizimo));
+    linhas += chaLinha('ALIMENTAÇÃO', chaBRL(alimentacao));
+    linhas += chaLinha('TRANSPORTE', chaBRL(transporte));
     var lucroCls = lucro >= 0 ? 'lucro-positivo' : 'lucro-negativo';
     var liquidoCls = liquido >= 0 ? 'lucro-positivo' : 'lucro-negativo';
-    linhas += '<div class="linha tot">LUCRO BRUTO <b class="' + lucroCls + '">' + chaBRL(lucro) + '</b></div>';
-    linhas += '<div class="linha tot">LÍQUIDO (após dízimo) <b class="' + liquidoCls + '">' + chaBRL(liquido) + '</b></div>';
+    linhas += chaLinha('LUCRO BRUTO', '<b class="' + lucroCls + '">' + chaBRL(lucro) + '</b>', '', 'tot');
+    linhas += chaLinha('LÍQUIDO (APÓS DÍZIMO)', '<b class="' + liquidoCls + '">' + chaBRL(liquido) + '</b>', '', 'tot');
     $('cha-resumo').innerHTML = linhas;
     $('cha-resumo').hidden = false;
     $('cha-lancar').hidden = false;
@@ -1371,6 +1398,23 @@
     $(id).addEventListener('input', chaSalvarLevou);
   });
   chaRestaurarLevou(); // preenche "Levou" com o que ficou salvo (não redigitar na volta)
+
+  // folha de ações da linha do extrato (Editar / Pago / Excluir / Cancelar)
+  var dlgAcoes = $('modal-acoes');
+  if (dlgAcoes) {
+    dlgAcoes.addEventListener('click', function (ev) {
+      var b = ev.target && ev.target.closest ? ev.target.closest('[data-acao]') : null;
+      var alvo = b ? b.dataset.acao : (ev.target === dlgAcoes ? 'cancelar' : '');
+      if (!alvo) return;
+      dlgAcoes.close();
+      var ctx = acaoCtx;
+      acaoCtx = null;
+      if (!ctx) return;
+      if (alvo === 'editar') abrirModal('editar', ctx.tipo, ctx.linha);
+      else if (alvo === 'excluir') excluir(ctx.tipo, ctx.linha);
+      else if (alvo === 'pago') marcarPago('saida', ctx.linha);
+    });
+  }
   visualizar('fin');
 
   // ------------------------------------------------------------ start

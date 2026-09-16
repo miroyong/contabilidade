@@ -13,15 +13,15 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon.svg">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=51">
+<link rel="stylesheet" href="style.css?v=52">
 </head>
 <body>
 
 <header class="topo">
   <div class="topo-linha">
-    <h1>💰 Controle Financeiro</h1>
+    <h1>Controle Financeiro</h1>
     <span id="sync-status" class="sync-status" role="status" aria-live="polite" hidden></span>
-    <button id="btn-tema" class="btn-tema" type="button" title="Alternar tema" aria-label="Alternar tema">🌙</button>
+    <button id="btn-tema" class="btn-tema" type="button" title="Alternar tema" aria-label="Alternar tema"><svg class="icone" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a7 7 0 1 0 11.1 11.1Z"/></svg></button>
   </div>
   <!-- seletor de mês: fica fixo no topo porque define o contexto de tudo abaixo -->
   <div class="meses" id="meses-barra">
@@ -31,74 +31,82 @@
 </header>
 
 <nav class="visualizacao" id="viz" aria-label="Seções do app">
-  <button type="button" class="viz-btn ativo" data-viz="fin">💼 Financeiro</button>
-  <button type="button" class="viz-btn" data-viz="cha">🪙 Arrecadação</button>
+  <button type="button" class="viz-btn ativo" data-viz="fin">Financeiro</button>
+  <button type="button" class="viz-btn" data-viz="cha">Arrecadação</button>
 </nav>
 
 <main>
   <!-- Aba Chaveiros: arrecadacao com venda de chaveiros (3D/2D/abridor) -->
   <section id="chaveiros-section" class="cartao chaveiros" hidden>
-    <h2>🪙 Arrecadação do dia</h2>
+    <h2>Arrecadação do dia</h2>
     <div class="cha-tipo" id="cha-tipo">
-      <button type="button" class="cha-tipo-btn ativo" data-cha-tipo="chaveiros">🪙 Chaveiros</button>
-      <button type="button" class="cha-tipo-btn" data-cha-tipo="brownie">🍫 Brownie</button>
+      <button type="button" class="cha-tipo-btn ativo" data-cha-tipo="chaveiros">Chaveiros</button>
+      <button type="button" class="cha-tipo-btn" data-cha-tipo="brownie">Brownie</button>
     </div>
-    <p class="cha-dica">Informe quantos levou e quantos voltaram (chaveiros ou brownie) e o que apurou no dia. O app calcula o que vendeu, o custo, o dízimo e lança tudo automaticamente.</p>
+    <p class="cha-dica">Quantos levou, quantos voltaram e o total do dia — o app calcula venda, custo, dízimo e lança tudo.</p>
 
     <div class="cha-produtos" id="cha-chaveiros-block">
-      <div class="cha-item">
-        <h3>Chaveiro 3D · custo R$ 5</h3>
-        <label>Levou <input type="number" id="cha-levou-3d" min="0" inputmode="numeric" placeholder="0"></label>
-        <label>Voltou <input type="number" id="cha-voltou-3d" min="0" inputmode="numeric" placeholder="0"></label>
-      </div>
-      <div class="cha-item">
-        <h3>Chaveiro 2D · custo R$ 2</h3>
-        <label>Levou <input type="number" id="cha-levou-2d" min="0" inputmode="numeric" placeholder="0"></label>
-        <label>Voltou <input type="number" id="cha-voltou-2d" min="0" inputmode="numeric" placeholder="0"></label>
-      </div>
-      <div class="cha-item">
-        <h3>Abridor · custo R$ 1</h3>
-        <label>Levou <input type="number" id="cha-levou-ab" min="0" inputmode="numeric" placeholder="0"></label>
-        <label>Voltou <input type="number" id="cha-voltou-ab" min="0" inputmode="numeric" placeholder="0"></label>
-      </div>
-    </div>
-
-    <div class="cha-produtos cha-brownie" id="cha-brownie-block" hidden>
-      <div class="cha-item">
-        <h3>🍫 Brownie</h3>
-        <label>Levou <input type="number" id="cha-b-levou" min="0" inputmode="numeric" placeholder="0"></label>
-        <label>Voltou <input type="number" id="cha-b-voltou" min="0" inputmode="numeric" placeholder="0"></label>
-        <label>Custo por unidade (R$)
-          <input type="text" class="campo-valor" id="cha-b-custo" inputmode="decimal" value="1,40">
-        </label>
+      <div class="cha-grade">
+        <div class="cha-grade-topo"><span>Produto</span><span>Levou</span><span>Voltou</span></div>
+        <div class="cha-linha">
+          <span class="cha-linha-nome">Chaveiro 3D<small>custo R$ 5</small></span>
+          <input type="number" id="cha-levou-3d" min="0" inputmode="numeric" placeholder="0" aria-label="Chaveiro 3D: quantos levou">
+          <input type="number" id="cha-voltou-3d" min="0" inputmode="numeric" placeholder="0" aria-label="Chaveiro 3D: quantos voltou">
+        </div>
+        <div class="cha-linha">
+          <span class="cha-linha-nome">Chaveiro 2D<small>custo R$ 2</small></span>
+          <input type="number" id="cha-levou-2d" min="0" inputmode="numeric" placeholder="0" aria-label="Chaveiro 2D: quantos levou">
+          <input type="number" id="cha-voltou-2d" min="0" inputmode="numeric" placeholder="0" aria-label="Chaveiro 2D: quantos voltou">
+        </div>
+        <div class="cha-linha">
+          <span class="cha-linha-nome">Abridor<small>custo R$ 1</small></span>
+          <input type="number" id="cha-levou-ab" min="0" inputmode="numeric" placeholder="0" aria-label="Abridor: quantos levou">
+          <input type="number" id="cha-voltou-ab" min="0" inputmode="numeric" placeholder="0" aria-label="Abridor: quantos voltou">
+        </div>
       </div>
     </div>
 
-    <label class="cha-valor">Nome (quem arrecadou)
-      <input type="text" id="cha-nome" placeholder="Ex.: Maria">
-    </label>
-    <label class="cha-valor">Total do dia — Pix (R$)
-      <input type="text" class="campo-valor" id="cha-pix" inputmode="decimal" placeholder="0,00">
-    </label>
-    <label class="cha-valor">Total do dia — Físico (R$)
-      <input type="text" class="campo-valor" id="cha-fisico" inputmode="decimal" placeholder="0,00">
-    </label>
-    <label class="cha-valor">Alimentação no dia (R$)
-      <input type="text" class="campo-valor" id="cha-alimentacao" inputmode="decimal" placeholder="0,00">
-    </label>
-    <label class="cha-valor">Transporte no dia (R$)
-      <input type="text" class="campo-valor" id="cha-transporte" inputmode="decimal" placeholder="0,00">
-    </label>
+    <div class="cha-produtos" id="cha-brownie-block" hidden>
+      <div class="cha-grade">
+        <div class="cha-grade-topo"><span>Produto</span><span>Levou</span><span>Voltou</span></div>
+        <div class="cha-linha">
+          <span class="cha-linha-nome">Brownie</span>
+          <input type="number" id="cha-b-levou" min="0" inputmode="numeric" placeholder="0" aria-label="Brownie: quantos levou">
+          <input type="number" id="cha-b-voltou" min="0" inputmode="numeric" placeholder="0" aria-label="Brownie: quantos voltou">
+        </div>
+      </div>
+      <label class="cha-custo">Custo por unidade (R$)
+        <input type="text" class="campo-valor" id="cha-b-custo" inputmode="decimal" value="1,40">
+      </label>
+    </div>
 
-    <button type="button" class="btn-primario" id="cha-calcular">🔢 Calcular</button>
+    <div class="cha-totais">
+      <label class="cha-valor">Nome (quem arrecadou)
+        <input type="text" id="cha-nome" placeholder="Ex.: Maria">
+      </label>
+      <label class="cha-valor">Total — Pix (R$)
+        <input type="text" class="campo-valor" id="cha-pix" inputmode="decimal" placeholder="0,00">
+      </label>
+      <label class="cha-valor">Total — Físico (R$)
+        <input type="text" class="campo-valor" id="cha-fisico" inputmode="decimal" placeholder="0,00">
+      </label>
+      <label class="cha-valor">Alimentação (R$)
+        <input type="text" class="campo-valor" id="cha-alimentacao" inputmode="decimal" placeholder="0,00">
+      </label>
+      <label class="cha-valor">Transporte (R$)
+        <input type="text" class="campo-valor" id="cha-transporte" inputmode="decimal" placeholder="0,00">
+      </label>
+    </div>
+
+    <button type="button" class="btn-primario" id="cha-calcular">Calcular</button>
 
     <div id="cha-resumo" class="cha-resumo" hidden></div>
 
-    <button type="button" class="btn-primario cha-lancar" id="cha-lancar" hidden>💾 Lançar tudo</button>
+    <button type="button" class="btn-primario cha-lancar" id="cha-lancar" hidden>Lançar no mês</button>
   </section>
 
   <div id="aviso-config" class="aviso aviso-erro" hidden>
-    ⚠️ SUPABASE_URL / SUPABASE_ANON_KEY ainda não configurados no <code>config.js</code>.
+    SUPABASE_URL / SUPABASE_ANON_KEY ainda não configurados no <code>config.js</code>.
     Veja o README.md (Passo 1) para configurar.
   </div>
   <div id="aviso-mes" class="aviso" hidden></div>
@@ -109,24 +117,24 @@
     <div class="saldo-valor" id="saldo-valor">R$ 0,00</div>
     <div class="saldo-por-conta">
       <div class="saldo-item">
-        <span class="saldo-item-nome">⚡ Pix</span>
+        <span class="saldo-item-nome">Pix</span>
         <span class="saldo-item-valor" id="saldo-pix">R$ 0,00</span>
       </div>
       <div class="saldo-item">
-        <span class="saldo-item-nome">💵 Físico</span>
+        <span class="saldo-item-nome">Físico</span>
         <span class="saldo-item-valor" id="saldo-fisico">R$ 0,00</span>
       </div>
     </div>
     <div class="saldo-sub">
-      <span class="tag tag-entrada">▲ <span id="saldo-entradas">R$ 0,00</span></span>
-      <span class="tag tag-saida">▼ <span id="saldo-saidas">R$ 0,00</span></span>
+      <span class="tag tag-entrada">▲ Entradas <span id="saldo-entradas">R$ 0,00</span></span>
+      <span class="tag tag-saida">▼ Saídas <span id="saldo-saidas">R$ 0,00</span></span>
     </div>
   </section>
 
   <!-- Dashboard: proporção entradas x saídas + números do mês -->
   <section class="cartao" id="dashboard-section">
     <div class="resumo-topo">
-      <h2>📊 Dashboard</h2>
+      <h2>Dashboard</h2>
       <span class="resumo-comp" id="comparativo"></span>
     </div>
 
@@ -148,9 +156,9 @@
         <option value="entrada">Só entradas</option>
         <option value="saida">Só saídas</option>
       </select>
-      <select id="filtro-categoria"><option value="">Todas as categorias</option></select>
       <select id="filtro-conta"><option value="">Todas as contas</option></select>
-      <input id="filtro-busca" type="search" placeholder="Buscar descrição ou valor…">
+      <select id="filtro-categoria"><option value="">Todas as categorias</option></select>
+      <input id="filtro-busca" type="search" placeholder="Buscar…" aria-label="Buscar lançamentos">
     </div>
   </section>
 
@@ -206,14 +214,28 @@
   </form>
 </dialog>
 
+<!-- Folha de ações da linha do extrato -->
+<dialog id="modal-acoes" class="dialog-acoes">
+  <div class="acoes-corpo">
+    <h3 id="acoes-desc"></h3>
+    <p class="acoes-det" id="acoes-det"></p>
+    <div class="acoes-lista">
+      <button type="button" class="acao-item" data-acao="editar">Editar</button>
+      <button type="button" class="acao-item" id="acao-pago" data-acao="pago">Marcar como pago</button>
+      <button type="button" class="acao-item acao-perigo" data-acao="excluir">Excluir</button>
+    </div>
+    <button type="button" class="btn-secundario acao-cancelar" data-acao="cancelar">Cancelar</button>
+  </div>
+</dialog>
+
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="config.js?v=51"></script>
-<script src="app.js?v=51"></script>
+<script src="config.js?v=52"></script>
+<script src="app.js?v=52"></script>
 <script>
   // Registra o service worker (PWA) — falha silenciosa se não suportado/Https.
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js?v=51').catch(function () {});
+    navigator.serviceWorker.register('service-worker.js?v=52').catch(function () {});
   }
 </script>
 </body>
