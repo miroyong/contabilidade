@@ -267,6 +267,10 @@
     return isNaN(n) ? 0 : n;
   }
 
+  function normalizarValorInput(input) {
+    input.value = input.value.replace(/\./g, ',');
+  }
+
   function esc(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -1004,6 +1008,10 @@
     if (!dados.descricao) { toast('Informe a descrição.'); return; }
     if (valor <= 0) { toast('Informe um valor maior que zero.'); return; }
     salvarLancamento(dados);
+  });
+
+  document.querySelectorAll('.campo-valor').forEach(function (input) {
+    input.addEventListener('input', function () { normalizarValorInput(input); });
   });
 
   ['filtro-tipo', 'filtro-categoria', 'filtro-conta'].forEach(function (id) {

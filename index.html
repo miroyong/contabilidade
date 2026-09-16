@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon.svg">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=36">
+<link rel="stylesheet" href="style.css?v=37">
 </head>
 <body>
 
@@ -64,7 +64,7 @@
         <label>Levou <input type="number" id="cha-b-levou" min="0" inputmode="numeric" placeholder="0"></label>
         <label>Voltou <input type="number" id="cha-b-voltou" min="0" inputmode="numeric" placeholder="0"></label>
         <label>Custo por unidade (R$)
-          <input type="text" id="cha-b-custo" inputmode="decimal" value="1,40">
+          <input type="text" class="campo-valor" id="cha-b-custo" inputmode="decimal" value="1,40">
         </label>
       </div>
     </div>
@@ -73,16 +73,16 @@
       <input type="text" id="cha-nome" placeholder="Ex.: Maria">
     </label>
     <label class="cha-valor">Total do dia — Pix (R$)
-      <input type="text" id="cha-pix" inputmode="decimal" placeholder="0,00">
+      <input type="text" class="campo-valor" id="cha-pix" inputmode="decimal" placeholder="0,00">
     </label>
     <label class="cha-valor">Total do dia — Físico (R$)
-      <input type="text" id="cha-fisico" inputmode="decimal" placeholder="0,00">
+      <input type="text" class="campo-valor" id="cha-fisico" inputmode="decimal" placeholder="0,00">
     </label>
     <label class="cha-valor">Alimentação no dia (R$)
-      <input type="text" id="cha-alimentacao" inputmode="decimal" placeholder="0,00">
+      <input type="text" class="campo-valor" id="cha-alimentacao" inputmode="decimal" placeholder="0,00">
     </label>
     <label class="cha-valor">Transporte no dia (R$)
-      <input type="text" id="cha-transporte" inputmode="decimal" placeholder="0,00">
+      <input type="text" class="campo-valor" id="cha-transporte" inputmode="decimal" placeholder="0,00">
     </label>
 
     <button type="button" class="btn-primario" id="cha-calcular">🔢 Calcular</button>
@@ -190,7 +190,7 @@
     </label>
     <div class="chips-rapido-box" id="chips-conta" hidden></div>
     <label>Valor (R$)
-      <input type="text" id="f-valor" inputmode="decimal" placeholder="0,00" required>
+      <input type="text" class="campo-valor" id="f-valor" inputmode="decimal" placeholder="0,00" required>
     </label>
 
     <datalist id="dl-categorias"></datalist>
@@ -205,12 +205,12 @@
 
 <div id="toast" class="toast" hidden></div>
 
-<script src="config.js?v=36"></script>
-<script src="app.js?v=36"></script>
+<script src="config.js?v=37"></script>
+<script src="app.js?v=37"></script>
 <script>
   // Registra o service worker (PWA) — falha silenciosa se não suportado/Https.
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js?v=36').catch(function () {});
+    navigator.serviceWorker.register('service-worker.js?v=37').catch(function () {});
   }
 </script>
 </body>
