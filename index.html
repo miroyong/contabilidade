@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon.svg">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=56">
+<link rel="stylesheet" href="style.css?v=57">
 </head>
 <body>
 
@@ -43,7 +43,7 @@
       <button type="button" class="cha-tipo-btn ativo" data-cha-tipo="chaveiros">Chaveiros</button>
       <button type="button" class="cha-tipo-btn" data-cha-tipo="brownie">Brownie</button>
     </div>
-    <p class="cha-dica">Quantos levou, quantos voltaram e o total do dia — o app calcula venda, custo, dízimo e lança tudo.</p>
+    <p class="cha-dica">Quantos levou, quantos voltaram e o total do dia (a alimentação entra no total) — o app calcula venda, custo, dízimo e lança tudo.</p>
 
     <div class="cha-produtos" id="cha-chaveiros-block">
       <div class="cha-grade">
@@ -230,12 +230,12 @@
 
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="config.js?v=56"></script>
-<script src="app.js?v=56"></script>
+<script src="config.js?v=57"></script>
+<script src="app.js?v=57"></script>
 <script>
   // Registra o service worker (PWA) — falha silenciosa se não suportado/Https.
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js?v=56').catch(function () {});
+    navigator.serviceWorker.register('service-worker.js?v=57').catch(function () {});
   }
 </script>
 </body>

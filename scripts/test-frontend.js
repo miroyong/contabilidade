@@ -320,7 +320,8 @@ setTimeout(() => {
   assert.ok(appJs.includes("categoria: 'Alimentação', conta: 'Físico'") &&
     appJs.includes("categoria: 'Transporte', conta: 'Físico'"),
     'Alimentação e Transporte permanecem em Físico');
-  // (b) funcional: lucro líquido desconta dízimo + alimentação + transporte
+  // (b) funcional: a receita do dia inclui a alimentação (Pix + Físico + Alimentação)
+  //     e o lucro líquido desconta dízimo + alimentação + transporte
   byId('cha-nome').value = 'Joana';
   byId('cha-levou-3d').value = 30; byId('cha-levou-2d').value = 0; byId('cha-levou-ab').value = 0;
   byId('cha-voltou-3d').value = 4; byId('cha-voltou-2d').value = 0; byId('cha-voltou-ab').value = 0;
@@ -328,14 +329,21 @@ setTimeout(() => {
   byId('cha-alimentacao').value = '50,00'; byId('cha-transporte').value = '20,00';
   byId('cha-calcular')._cb['click']();
   const resumoCha = norm(byId('cha-resumo').innerHTML);
-  // 26 vendidos * custo 5 = 130; receita 520; lucro bruto = 390; dízimo = 10% de 390 = 39;
-  // líquido = 390 - 39 - 50 - 20 = 281
+  // 26 vendidos * custo 5 = 130; total do dia = 320 + 200 + 50 (alimentação) = 570;
+  // lucro bruto = 570 - 130 = 440; dízimo = 10% de 440 = 44;
+  // líquido = 440 - 44 - 50 - 20 = 326
   assert.ok(/ALIMENTAÇÃO/.test(resumoCha), 'resumo chaveiros mostra Alimentação');
   assert.ok(/TRANSPORTE/.test(resumoCha), 'resumo chaveiros mostra Transporte');
+  const totDia = (resumoCha.match(/TOTAL DO DIA[\s\S]*?linha-val[^0-9]*([\d.,]+)/) || [])[1];
+  assert.strictEqual(totDia, '570,00', 'total do dia 570 (320 + 200 + alimentação 50)');
+  assert.ok(/TOTAL DO DIA[\s\S]*?Alimentação R\$ 50,00/.test(resumoCha),
+    'detalhe do Total do Dia inclui a Alimentação');
+  assert.ok(appJs.includes('function chaReceitaDia') && appJs.includes('chaDetTotalDia'),
+    'total do dia centralizado em chaReceitaDia/chaDetTotalDia');
   const lucroB = (resumoCha.match(/LUCRO BRUTO[^0-9]*([\d.,]+)/) || [])[1];
   const lique = (resumoCha.match(/LÍQUIDO[^0-9]*([\d.,]+)/) || [])[1];
-  assert.strictEqual(lucroB, '390,00', 'lucro bruto 390 (520-130)');
-  assert.strictEqual(lique, '281,00', 'líquido 281 (390-dízimo39-alim50-transp20)');
+  assert.strictEqual(lucroB, '440,00', 'lucro bruto 440 (570-130)');
+  assert.strictEqual(lique, '326,00', 'líquido 326 (440-dízimo44-alim50-transp20)');
 
   // ===== regressão: a arrecadação vai para o mês da data, não para a aba aberta =====
   // troca a aba aberta para um mês diferente do mês de hoje (mês anterior)

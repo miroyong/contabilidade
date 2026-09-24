@@ -1307,6 +1307,16 @@
       '<span class="linha-val">' + val + '</span></div>';
   }
 
+  // O Total do Dia é a receita do dia = Pix + Físico + Alimentação: o dinheiro
+  // da comida saiu do que foi arrecadado, então entra no total (e no detalhe).
+  function chaReceitaDia(pix, fisico, alimentacao) {
+    return pix + fisico + alimentacao;
+  }
+  function chaDetTotalDia(pix, fisico, alimentacao) {
+    return 'Pix ' + chaBRL(pix) + ' · Físico ' + chaBRL(fisico) +
+      (alimentacao > 0 ? ' · Alimentação ' + chaBRL(alimentacao) : '');
+  }
+
   function chaCalcular() {
     if (CHA_TIPO === 'brownie') { chaCalcularBrownie(); return; }
     var vendas = {
@@ -1319,7 +1329,7 @@
     var receitaFis = chaVal('cha-fisico');
     var alimentacao = chaVal('cha-alimentacao');
     var transporte = chaVal('cha-transporte');
-    var receita = receitaPix + receitaFis;
+    var receita = chaReceitaDia(receitaPix, receitaFis, alimentacao);
     // dízimo = 10% do que sobra APÓS descontar o custo da mercadoria
     // (ex.: 3D de R$20 com custo R$5 -> 10% de R$15 = R$1,50). Nunca negativo.
     var dizimo = Math.max(0, Math.round((receita - custo) * 0.10 * 100) / 100);
@@ -1337,7 +1347,7 @@
     linhas += chaLinha('VENDIDOS', String(vendidos),
       '3D ' + vendas['3d'] + ' · 2D ' + vendas['2d'] + ' · Abridor ' + vendas['ab']);
     linhas += chaLinha('TOTAL DO DIA', chaBRL(receita),
-      'Pix ' + chaBRL(receitaPix) + ' · Físico ' + chaBRL(receitaFis));
+      chaDetTotalDia(receitaPix, receitaFis, alimentacao));
     linhas += chaLinha('CUSTO DOS MATERIAIS', chaBRL(custo));
     linhas += chaLinha('DÍZIMO (10% DA MARGEM)', chaBRL(dizimo));
     linhas += chaLinha('ALIMENTAÇÃO', chaBRL(alimentacao));
@@ -1361,7 +1371,7 @@
     var receitaFis = chaVal('cha-fisico');
     var alimentacao = chaVal('cha-alimentacao');
     var transporte = chaVal('cha-transporte');
-    var receita = receitaPix + receitaFis;
+    var receita = chaReceitaDia(receitaPix, receitaFis, alimentacao);
     // dízimo = 10% do que sobra APÓS descontar o custo da mercadoria
     var dizimo = Math.max(0, Math.round((receita - custo) * 0.10 * 100) / 100);
     var nome = ($('cha-nome') ? $('cha-nome').value : '').trim();
@@ -1376,7 +1386,7 @@
     if (nome) linhas += chaLinha('QUEM ARRECADOU', nome);
     linhas += chaLinha('VENDIDOS', String(vendidos) + ' brownie(s)', 'custo ' + chaBRL(custoUn) + '/un');
     linhas += chaLinha('TOTAL DO DIA', chaBRL(receita),
-      'Pix ' + chaBRL(receitaPix) + ' · Físico ' + chaBRL(receitaFis));
+      chaDetTotalDia(receitaPix, receitaFis, alimentacao));
     linhas += chaLinha('CUSTO DOS MATERIAIS', chaBRL(custo));
     linhas += chaLinha('DÍZIMO (10% DA MARGEM)', chaBRL(dizimo));
     linhas += chaLinha('ALIMENTAÇÃO', chaBRL(alimentacao));
