@@ -369,7 +369,16 @@ setTimeout(() => {
         assert.strictEqual(b.mes_id, mesDoIso(b.data),
           'arrecadação grava no mês da data (' + b.mes_id + ' para ' + b.data + ')');
         assert.notStrictEqual(b.mes_id, prevName, 'arrecadação NÃO usa o mês da aba aberta');
+        // todo lançamento da aba leva o nome de quem arrecadou no fim do parêntese
+        assert.ok(/ — Joana\)$/.test(b.descricao),
+          'lançamento da arrecadação leva o nome (' + b.descricao + ')');
       });
+      assert.ok(POSTS.some((b) => /^Dízimo \(venda de chaveiros — Joana\)$/.test(b.descricao)),
+        'dízimo da arrecadação já sai com o nome');
+      assert.ok(POSTS.some((b) => /^Alimentação \(venda de chaveiros — Joana\)$/.test(b.descricao)),
+        'alimentação da arrecadação já sai com o nome');
+      assert.ok(appJs.includes('function comNome(base)'),
+        'nome aplicado por comNome(base) em todos os itens da aba');
       assert.strictEqual(els['saldo-mes'].textContent, curName,
         'app muda para o mês da data depois de lançar');
       assert.strictEqual(norm(els['saldo-valor'].textContent), 'R$ 1.500,00',
