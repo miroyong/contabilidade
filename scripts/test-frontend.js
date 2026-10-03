@@ -315,10 +315,11 @@ setTimeout(() => {
     'nenhuma saída de Alimentação/Transporte é gravada');
   assert.ok(appJs.includes("'cha-pix','cha-fisico','cha-alimentacao','cha-transporte'"),
     'limpeza pós-lançamento inclui alim/transp');
-  // (a2) custo e dízimo já vêm pré-configurados como Pix (não Físico)
-  assert.ok(appJs.includes("categoria: 'Custos', conta: 'Pix'") &&
-    appJs.includes("categoria: 'Dízimo', conta: 'Pix'"),
-    'Custo e Dízimo lançam em conta Pix');
+  // (a2) só o dízimo continua lançando (o custo do material não vai mais para a tabela)
+  assert.ok(appJs.includes("categoria: 'Dízimo', conta: 'Pix'"),
+    'Dízimo lança em conta Pix');
+  assert.ok(!appJs.includes("categoria: 'Custos'"),
+    'custo do material NÃO vira lançamento (não é mais enviado à sede)');
   // (b) funcional: a receita do dia inclui alimentação E transporte
   //     (Pix + Físico + Alimentação + Transporte) e o lucro líquido desconta
   //     dízimo + alimentação + transporte
@@ -330,8 +331,8 @@ setTimeout(() => {
   byId('cha-calcular')._cb['click']();
   const resumoCha = norm(byId('cha-resumo').innerHTML);
   // 26 vendidos * custo 5 = 130; total do dia = 320 + 200 + 50 + 20 = 590;
-  // lucro bruto = 590 - 130 = 460; dízimo = 10% de 460 = 46;
-  // líquido = 460 - 46 - 50 - 20 = 344
+  // dízimo = 10% de (590 - 130) = 46;
+  // em caixa antes do dízimo = 590 - 50 - 20 = 520; líquido = 520 - 46 = 474
   assert.ok(/ALIMENTAÇÃO/.test(resumoCha), 'resumo chaveiros mostra Alimentação');
   assert.ok(/TRANSPORTE/.test(resumoCha), 'resumo chaveiros mostra Transporte');
   const totDia = (resumoCha.match(/TOTAL DO DIA[\s\S]*?linha-val[^0-9]*([\d.,]+)/) || [])[1];
@@ -344,8 +345,8 @@ setTimeout(() => {
     'total do dia centralizado em chaReceitaDia/chaDetTotalDia');
   const lucroB = (resumoCha.match(/LUCRO BRUTO[^0-9]*([\d.,]+)/) || [])[1];
   const lique = (resumoCha.match(/LÍQUIDO[^0-9]*([\d.,]+)/) || [])[1];
-  assert.strictEqual(lucroB, '460,00', 'lucro bruto 460 (590-130)');
-  assert.strictEqual(lique, '344,00', 'líquido 344 (460-dízimo46-alim50-transp20)');
+  assert.strictEqual(lucroB, '520,00', 'em caixa antes do dízimo 520 (590-50-20)');
+  assert.strictEqual(lique, '474,00', 'líquido 474 (520-dízimo46)');
 
   // ===== regressão: a arrecadação vai para o mês da data, não para a aba aberta =====
   // troca a aba aberta para um mês diferente do mês de hoje (mês anterior)
@@ -377,8 +378,8 @@ setTimeout(() => {
       });
       assert.ok(POSTS.some((b) => /^Dízimo \(venda de chaveiros — Joana\)$/.test(b.descricao)),
         'dízimo da arrecadação já sai com o nome');
-      assert.ok(!POSTS.some((b) => /^Alimentação|^Transporte/.test(b.descricao)),
-        'alimentação/transporte NÃO viram lançamento (o dinheiro já saiu do caixa)');
+      assert.ok(!POSTS.some((b) => /^Alimentação|^Transporte|^Custo/.test(b.descricao)),
+        'alimentação/transporte/custo NÃO viram lançamento');
       assert.ok(appJs.includes('function comNome(base)'),
         'nome aplicado por comNome(base) em todos os itens da aba');
       assert.strictEqual(els['saldo-mes'].textContent, curName,

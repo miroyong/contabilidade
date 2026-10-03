@@ -1341,8 +1341,11 @@
       return;
     }
     state.chaveiros = { nome: nome, vendas: vendas, custo: custo, receita: receita, receitaPix: receitaPix, receitaFis: receitaFis, dizimo: dizimo, alimentacao: alimentacao, transporte: transporte };
-    var lucro = receita - custo;                                        // bruto (antes do dízimo)
-    var liquido = Math.max(0, lucro - dizimo - alimentacao - transporte); // o que sobra após dízimo + alimentação + transporte
+    // O custo do material não sai do caixa (o grupo compra o próprio material e
+    // não o remete à sede): entra só na conta do dízimo, que é sobre a margem.
+    // Alimentação e transporte também já saíram do caixa informado.
+    var lucro = receita - alimentacao - transporte;   // em caixa antes do dízimo
+    var liquido = Math.max(0, lucro - dizimo);        // em caixa após o dízimo
     var vendidos = vendas['3d'] + vendas['2d'] + vendas['ab'];
     var linhas = '';
     if (nome) linhas += chaLinha('QUEM ARRECADOU', nome);
@@ -1382,8 +1385,11 @@
       return;
     }
     state.chaveiros = { tipo: 'brownie', nome: nome, vendidos: vendidos, custo: custo, receita: receita, receitaPix: receitaPix, receitaFis: receitaFis, dizimo: dizimo, alimentacao: alimentacao, transporte: transporte };
-    var lucro = receita - custo;
-    var liquido = Math.max(0, lucro - dizimo - alimentacao - transporte);
+    // O custo do material não sai do caixa (o grupo compra o próprio material e
+    // não o remete à sede): entra só na conta do dízimo, que é sobre a margem.
+    // Alimentação e transporte também já saíram do caixa informado.
+    var lucro = receita - alimentacao - transporte;   // em caixa antes do dízimo
+    var liquido = Math.max(0, lucro - dizimo);        // em caixa após o dízimo
     var linhas = '';
     if (nome) linhas += chaLinha('QUEM ARRECADOU', nome);
     linhas += chaLinha('VENDIDOS', String(vendidos) + ' brownie(s)', 'custo ' + chaBRL(custoUn) + '/un');
@@ -1414,7 +1420,7 @@
     var quem = c.nome ? ' — ' + c.nome : '';
     // Todo lançamento gerado pela aba leva o nome de quem arrecadou no fim do
     // parêntese: "Venda de chaveiros (arrecadação — Joana)",
-    // "Dízimo (venda de chaveiros — Joana)", "Custo chaveiros (mercadoria — Joana)"…
+    // "Dízimo (venda de chaveiros — Joana)"…
     function comNome(base) {
       return quem ? base.replace(/\)$/, quem + ')') : base;
     }
@@ -1423,18 +1429,18 @@
       itens = [];
       if (c.receitaPix > 0) itens.push({ tipo: 'entrada', descricao: comNome('Venda de brownie (arrecadação)'), categoria: 'Vendas', conta: 'Pix', valor: c.receitaPix });
       if (c.receitaFis > 0) itens.push({ tipo: 'entrada', descricao: comNome('Venda de brownie (arrecadação)'), categoria: 'Vendas', conta: 'Físico', valor: c.receitaFis });
-      if (c.custo > 0) itens.push({ tipo: 'saida', descricao: comNome('Custo brownie (mercadoria)'), categoria: 'Custos Brownie', conta: 'Pix', valor: c.custo });
+      // Custo, alimentação e transporte NÃO viram saída: o custo do material já
+      // não é remetido à sede (o grupo compra o próprio) e alimentação/transporte
+      // já saíram do caixa — lançar aqui descontaria de novo. Só entra o dízimo.
       if (c.dizimo > 0) itens.push({ tipo: 'saida', descricao: comNome('Dízimo (venda de brownie)'), categoria: 'Dízimo', conta: 'Pix', valor: c.dizimo });
-      // Nem alimentação nem transporte viram saída: esse dinheiro já saiu do
-      // caixa e não está no Pix/Físico informado — lançar aqui descontaria 2x.
     } else {
       itens = [];
       if (c.receitaPix > 0) itens.push({ tipo: 'entrada', descricao: comNome('Venda de chaveiros (arrecadação)'), categoria: 'Vendas', conta: 'Pix', valor: c.receitaPix });
       if (c.receitaFis > 0) itens.push({ tipo: 'entrada', descricao: comNome('Venda de chaveiros (arrecadação)'), categoria: 'Vendas', conta: 'Físico', valor: c.receitaFis });
-      if (c.custo > 0) itens.push({ tipo: 'saida', descricao: comNome('Custo chaveiros (mercadoria)'), categoria: 'Custos', conta: 'Pix', valor: c.custo });
+      // Custo, alimentação e transporte NÃO viram saída: o custo do material já
+      // não é remetido à sede (o grupo compra o próprio) e alimentação/transporte
+      // já saíram do caixa — lançar aqui descontaria de novo. Só entra o dízimo.
       if (c.dizimo > 0) itens.push({ tipo: 'saida', descricao: comNome('Dízimo (venda de chaveiros)'), categoria: 'Dízimo', conta: 'Pix', valor: c.dizimo });
-      // Nem alimentação nem transporte viram saída: esse dinheiro já saiu do
-      // caixa e não está no Pix/Físico informado — lançar aqui descontaria 2x.
     }
     if (!itens.length) { toast('Nada a lançar.'); return; }
     $('cha-lancar').disabled = true;
