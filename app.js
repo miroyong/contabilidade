@@ -1425,7 +1425,8 @@
       if (c.receitaFis > 0) itens.push({ tipo: 'entrada', descricao: comNome('Venda de brownie (arrecadação)'), categoria: 'Vendas', conta: 'Físico', valor: c.receitaFis });
       if (c.custo > 0) itens.push({ tipo: 'saida', descricao: comNome('Custo brownie (mercadoria)'), categoria: 'Custos Brownie', conta: 'Pix', valor: c.custo });
       if (c.dizimo > 0) itens.push({ tipo: 'saida', descricao: comNome('Dízimo (venda de brownie)'), categoria: 'Dízimo', conta: 'Pix', valor: c.dizimo });
-      if (c.alimentacao > 0) itens.push({ tipo: 'saida', descricao: comNome('Alimentação (venda de brownie)'), categoria: 'Alimentação', conta: 'Físico', valor: c.alimentacao });
+      // A alimentação NÃO vira saída: o dinheiro da comida já saiu do caixa e
+      // não está no Pix/Físico informado — lançar aqui descontaria duas vezes.
       if (c.transporte > 0) itens.push({ tipo: 'saida', descricao: comNome('Transporte (venda de brownie)'), categoria: 'Transporte', conta: 'Físico', valor: c.transporte });
     } else {
       itens = [];
@@ -1433,7 +1434,8 @@
       if (c.receitaFis > 0) itens.push({ tipo: 'entrada', descricao: comNome('Venda de chaveiros (arrecadação)'), categoria: 'Vendas', conta: 'Físico', valor: c.receitaFis });
       if (c.custo > 0) itens.push({ tipo: 'saida', descricao: comNome('Custo chaveiros (mercadoria)'), categoria: 'Custos', conta: 'Pix', valor: c.custo });
       if (c.dizimo > 0) itens.push({ tipo: 'saida', descricao: comNome('Dízimo (venda de chaveiros)'), categoria: 'Dízimo', conta: 'Pix', valor: c.dizimo });
-      if (c.alimentacao > 0) itens.push({ tipo: 'saida', descricao: comNome('Alimentação (venda de chaveiros)'), categoria: 'Alimentação', conta: 'Físico', valor: c.alimentacao });
+      // A alimentação NÃO vira saída: o dinheiro da comida já saiu do caixa e
+      // não está no Pix/Físico informado — lançar aqui descontaria duas vezes.
       if (c.transporte > 0) itens.push({ tipo: 'saida', descricao: comNome('Transporte (venda de chaveiros)'), categoria: 'Transporte', conta: 'Físico', valor: c.transporte });
     }
     if (!itens.length) { toast('Nada a lançar.'); return; }
