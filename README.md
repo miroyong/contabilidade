@@ -74,8 +74,8 @@ assets para forçar atualização nos dispositivos.
 - **⋯** (na linha do lançamento): abre as ações — editar, marcar pago/enviado ou excluir.
 - **Chaveiros / Brownie**: alterna o tipo de arrecadação dentro da aba **Arrecadação**.
 - **Arrecadação**: informe quantos levou/voltou e os valores do dia → **Calcular**
-  → **Lançar tudo** (grava entradas de venda e saídas de custo/dízimo/transporte;
-  a alimentação entra no total/dízimo mas não vira saída — o dinheiro já saiu do caixa).
+  → **Lançar tudo** (grava entradas de venda e saídas de custo/dízimo; a alimentação
+  e o transporte entram no total/dízimo mas não viram saída — o dinheiro já saiu do caixa).
 - **Dashboard**: barra de proporção, KPIs e comparativo vs mês anterior.
 - **Offline**: a 2ª abertura renderiza do cache local; as ações confirmam só
   quando o servidor responde (sem "fantasma" de lançamento).

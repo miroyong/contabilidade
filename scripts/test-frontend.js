@@ -303,24 +303,22 @@ setTimeout(() => {
   assert.ok(appJs.includes("CHA_LEVOU_KEY = 'chaLevou'") && appJs.includes('function chaSalvarLevou') &&
     appJs.includes('function chaRestaurarLevou'), 'persistência do Levou (chaSalvarLevou/chaRestaurarLevou)');
 
-  // ===== "arrecadação": Alimentação e Transporte re-incluídos (revert f8947a8) =====
-  // (a) campos/estado + lançamentos de saída presentes no código
+  // ===== "arrecadação": alimentação e transporte entram no cálculo, mas não como saída =====
+  // (a) campos/estado + cálculo presentes no código
   assert.ok(appJs.includes("var alimentacao = chaVal('cha-alimentacao')") &&
     appJs.includes("var transporte = chaVal('cha-transporte')"), 'lê campos alimentação/transporte');
   assert.ok(appJs.includes("alimentacao: alimentacao, transporte: transporte"), 'state.chaveiros guarda alim/transp');
-  assert.ok(appJs.includes("categoria: 'Transporte'") &&
-    appJs.includes("'Transporte (venda de chaveiros)'"),
-    'lança a saída Transporte no chaLancar');
-  assert.ok(!appJs.includes("'Alimentação (venda de chaveiros)'"),
-    'alimentação NÃO vira saída no chaLancar (não desconta duas vezes)');
+  assert.ok(!appJs.includes("'Alimentação (venda de chaveiros)'") &&
+    !appJs.includes("'Transporte (venda de chaveiros)'"),
+    'alimentação e transporte NÃO viram saída no chaLancar (não descontam 2x)');
+  assert.ok(!appJs.includes("categoria: 'Alimentação'") && !appJs.includes("categoria: 'Transporte'"),
+    'nenhuma saída de Alimentação/Transporte é gravada');
   assert.ok(appJs.includes("'cha-pix','cha-fisico','cha-alimentacao','cha-transporte'"),
     'limpeza pós-lançamento inclui alim/transp');
   // (a2) custo e dízimo já vêm pré-configurados como Pix (não Físico)
   assert.ok(appJs.includes("categoria: 'Custos', conta: 'Pix'") &&
     appJs.includes("categoria: 'Dízimo', conta: 'Pix'"),
     'Custo e Dízimo lançam em conta Pix');
-  assert.ok(appJs.includes("categoria: 'Transporte', conta: 'Físico'"),
-    'Transporte permanece em Físico');
   // (b) funcional: a receita do dia inclui alimentação E transporte
   //     (Pix + Físico + Alimentação + Transporte) e o lucro líquido desconta
   //     dízimo + alimentação + transporte
@@ -379,8 +377,8 @@ setTimeout(() => {
       });
       assert.ok(POSTS.some((b) => /^Dízimo \(venda de chaveiros — Joana\)$/.test(b.descricao)),
         'dízimo da arrecadação já sai com o nome');
-      assert.ok(!POSTS.some((b) => /^Alimentação/.test(b.descricao)),
-        'alimentação NÃO vira lançamento (o dinheiro já saiu do caixa)');
+      assert.ok(!POSTS.some((b) => /^Alimentação|^Transporte/.test(b.descricao)),
+        'alimentação/transporte NÃO viram lançamento (o dinheiro já saiu do caixa)');
       assert.ok(appJs.includes('function comNome(base)'),
         'nome aplicado por comNome(base) em todos os itens da aba');
       assert.strictEqual(els['saldo-mes'].textContent, curName,
