@@ -1240,7 +1240,7 @@
   });
 
   // ------------------------------------------------------------ aba Arrecadação
-  var CHA_CUSTOS = { '3d': 5, '2d': 2, 'ab': 1 }; // custo/un chaveiros
+  var CHA_CUSTOS = { '3d': 5, '2d': 2.5, 'ab': 1 }; // custo/un chaveiros
   var CHA_TIPO = 'chaveiros';                      // 'chaveiros' | 'brownie'
   function chaBRL(v) {
     return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
