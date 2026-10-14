@@ -80,12 +80,52 @@ assets para forçar atualização nos dispositivos.
 - **Offline**: a 2ª abertura renderiza do cache local; as ações confirmam só
   quando o servidor responde (sem "fantasma" de lançamento).
 
-## Migrando da planilha Google (legado)
+## Espelho no Google Sheets (Supabase ➜ planilha)
 
-A versão anterior gravava numa planilha via Apps Script. O `apps-script/`
-continua no repositório **só como referência**. Para reaproveitar dados antigos,
-exporte as abas como CSV e importe no Table Editor do Supabase
-(`meses` = abas, `lancamentos` = linhas com `mes_id`, `tipo`, etc.).
+Os dados do Supabase podem ser copiados para esta planilha:
+
+https://docs.google.com/spreadsheets/d/1WTL4V2AGx_jj84_rKU3Y18tGXgeN4dT9-ciYc0an_dA
+
+Quem faz isso é o `apps-script/MigrarSupabase.gs`. É um **espelho de leitura**:
+o Supabase continua sendo a fonte da verdade (a planilha é regravada a cada
+execução).
+
+**Instalação (1 vez)**
+
+1. Abra a planilha de destino → **Extensões → Apps Script**.
+2. **➕ → Script**, nome `MigrarSupabase`, e cole `apps-script/MigrarSupabase.gs`.
+3. Salve e **recarregue a planilha**: aparece o menu **Financeiro**.
+
+**Uso**
+
+- **Financeiro → ⬇️ Migrar tudo do Supabase**: cria/atualiza uma aba por mês.
+- **Financeiro → 📅 Migrar um mês…**: aceita `Agosto`, `2026-08` ou `Agosto 2026`.
+- **Financeiro → 🔌 Testar conexão**: confere URL/chave e lista os meses do banco.
+- Pelo editor: selecione `migrarDoSupabase` e clique ▶ Executar.
+- Via URL (com o `Code.gs` no mesmo projeto):
+  `/exec?key=cf-2026-k3x9pQ7mZt&action=migrar` (ou `&mes=Agosto`).
+
+**Como os dados ficam na planilha** (mesmo layout do `Code.gs`):
+
+```
+linha 6  = cabeçalho · lançamentos a partir da linha 7
+A:E      = ENTRADAS (Data, Descrição, Categoria, Conta, Valor)
+G:K      = SAÍDAS   (mesma ordem) · F = coluna separadora
+C4 / I4  = totais · C1 = balanço (fórmulas recalculadas)
+```
+
+- Nome da aba = `meses.id` do banco (`Agosto`); se o mesmo mês existir em 2+
+  anos, vira `Agosto 2025` / `Agosto 2026` (ajustável em `MIG_FORMATO_ABA`).
+- A marca `✓` de pago/enviado vem dentro da própria Descrição.
+- Ordem: data e, no empate, `num` (a "linha" estável do banco).
+- As fórmulas `=SUM(E7:E…)`/`=SUM(K7:K…)` são **esticadas** quando o mês passa de
+  93 lançamentos (o range do `Code.gs` ia só até a linha 100).
+- **Idempotente**: o bloco de lançamentos da aba é limpo e regravado — pode rodar
+  quantas vezes quiser, sem duplicar nem deixar linhas órfãs. A leitura é paginada
+  (1000 registros por requisição) e um mês com problema não impede os outros.
+- Para trocar o destino sem editar o código, salve a propriedade do script
+  `SPREADSHEET_ID` (Configurações do projeto → Propriedades do script).
+- ⚠️ Como a planilha é regravada, **edite pelo app**, não direto na planilha.
 
 ## Estrutura do projeto
 
@@ -101,14 +141,17 @@ contabilidade/
 ├── supabase/
 │   └── schema.sql        # tabelas meses/lancamentos + RLS (documentação)
 ├── apps-script/          # [legado] backend antigo da planilha (não usar)
+│   ├── Code.gs               # API da planilha (/exec)
+│   └── MigrarSupabase.gs     # espelho Supabase ➜ planilha (menu "Financeiro")
 ├── scripts/
 │   ├── test-backend.js       # lógica pura do Code.gs (legado)
 │   ├── test-frontend.js      # smoke test com PostgREST mockado
 │   ├── test-persistencia.js  # cache não guarda lançamento não confirmado
 │   ├── test-cache.js         # 2ª abertura renderiza do cache sem servidor
+│   ├── test-migracao.js      # migração Supabase ➜ Sheets (APIs simuladas)
 │   └── deploy-apps-script.sh # [legado] redeploy do Apps Script
 ├── .github/workflows/
-│   └── ci.yml            # CI: roda os 4 testes a cada push
+│   └── ci.yml            # CI: roda os 5 testes a cada push
 └── README.md
 ```
 
@@ -121,8 +164,9 @@ node scripts/test-backend.js
 node scripts/test-frontend.js
 node scripts/test-persistencia.js
 node scripts/test-cache.js
+node scripts/test-migracao.js
 ```
 
-O GitHub Actions (`.github/workflows/ci.yml`) roda os quatro em todo
+O GitHub Actions (`.github/workflows/ci.yml`) roda os cinco em todo
 `push`/`pull request`.
 

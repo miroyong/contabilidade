@@ -14,6 +14,11 @@
  *
  * IMPORTANTE: depois de qualquer mudança neste código, faça
  * Implantar → Gerenciar implantações → ✏️ → Nova versão.
+ *
+ * OPCIONAL: para copiar os dados do Supabase para uma planilha, crie um segundo
+ * arquivo no mesmo projeto (➕ → Script → "MigrarSupabase") e cole o conteúdo de
+ * apps-script/MigrarSupabase.gs. Depois dá para migrar pelo menu da planilha ou
+ * pela URL: .../exec?key=APP_KEY&action=migrar
  ******************************************************************************/
 
 var SPREADSHEET_ID = '1jp7hBdUXn5ZmgxVM8UwZFqLB7B4mT8Irmm3EYGwM9Ns';
@@ -55,6 +60,7 @@ function processar(p) {
       case 'excluir':     return acaoExcluir(ss, p);
       case 'novoMes':     return acaoNovoMes(ss, p.mes);
       case 'opcoes':      return acaoOpcoes(ss);
+      case 'migrar':      return acaoMigrar(p.mes);
       default:            return { ok: false, erro: 'Ação desconhecida: ' + p.action };
     }
   } catch (err) {
@@ -190,6 +196,17 @@ function acaoOpcoes(ss) {
     categorias: Object.keys(cats).sort(),
     contas: Object.keys(contas).sort()
   };
+}
+
+// Copia os dados do Supabase para a planilha de destino. A implementação vive
+// em apps-script/MigrarSupabase.gs (arquivo separado, opcional):
+//   .../exec?key=APP_KEY&action=migrar             → migra todos os meses
+//   .../exec?key=APP_KEY&action=migrar&mes=Agosto  → migra só um mês
+function acaoMigrar(mes) {
+  if (typeof migrarDoSupabase !== 'function') {
+    return { ok: false, erro: 'Script de migração não instalado (apps-script/MigrarSupabase.gs).' };
+  }
+  return migrarDoSupabase(mes);
 }
 
 // ------------------------------------------------------------------- utilitários

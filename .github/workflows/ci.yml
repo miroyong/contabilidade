@@ -25,3 +25,6 @@ jobs:
 
       - name: Cache quente (2ª abertura sem servidor)
         run: node scripts/test-cache.js
+
+      - name: Migração (Supabase → Google Sheets)
+        run: node scripts/test-migracao.js
