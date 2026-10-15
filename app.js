@@ -473,10 +473,15 @@
 
   var CONTAS = ['Pix', 'Dinheiro'];
 
+  // comparação tolerante de nomes: sem acento e em minúsculas
+  function semAcento(s) {
+    return String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
   // normaliza qualquer nome de conta (novo ou legado) para um dos dois baldes:
   // 'Pix' (Pix / Cartão) e 'Físico' (Dinheiro + legado Físico, o dinheiro em mãos)
   function contaChave(nome) {
-    var s = String(nome || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    var s = semAcento(nome);
     if (s.indexOf('pix') >= 0) return 'Pix';
     if (s.indexOf('fisic') >= 0) return 'Físico';
     if (s.indexOf('dinheiro') >= 0) return 'Físico';
@@ -764,6 +769,14 @@
       '<span class="s"><b>' + fmtBRL.format(totS) + '</b> ▼ · ' + (100 - pctE) + '%</span>';
   }
 
+  // "Depósito" é dinheiro que sai do caixa para o banco: movimentação, não
+  // despesa. Vale para a categoria "Depósito" e para a descrição que começa
+  // com "Depósito" (ex.: "Depósito em dinheiro").
+  function ehDeposito(l) {
+    return semAcento(l && l.categoria) === 'deposito' ||
+      semAcento(l && l.descricao).indexOf('deposito') === 0;
+  }
+
   function renderKpis(totE, totS) {
     var box = $('insights');
     var html = [];
@@ -786,7 +799,10 @@
     Object.keys(porCat).forEach(function (c) {
       if (!topCat || porCat[c] > topCat.valor) topCat = { nome: c, valor: porCat[c] };
     });
-    var maior = saidasInsight.slice().sort(function (a, b) { return b.valor - a.valor; })[0];
+    // "Maior saída" ignora movimentação de caixa para o banco: um depósito alto
+    // não é a maior despesa do mês (o gráfico e o caixa continuam contando).
+    var maior = saidasInsight.filter(function (l) { return !ehDeposito(l); })
+      .sort(function (a, b) { return b.valor - a.valor; })[0];
 
     function kpi(rot, val, sub, extra) {
       html.push('<div class="kpi' + (extra ? ' ' + extra : '') + '">' +

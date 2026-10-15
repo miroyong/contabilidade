@@ -10,7 +10,8 @@ primeiro, com cache local e sincronização) e traz dashboard e relatórios.
 - Extrato com filtros (tipo, categoria, conta, busca)
 - Dashboard: barra de proporção entradas × saídas, KPIs do mês e comparativo com o anterior
 - Cartão "Saídas líquidas por categoria": lista **todas** as categorias do mês, descontando as
-  entradas da mesma categoria (um dízimo recebido e repassado à sede não conta como gasto)
+  entradas da mesma categoria (um dízimo recebido e repassado à sede não conta como gasto);
+  o KPI "Maior saída" ignora depósito/transferência do caixa para o banco
 - Ações por lançamento (⋯): editar, marcar "pago/enviado" em despesas (Dízimo/Custos) e excluir
 - Aba Arrecadação (Chaveiros/Brownie): calcula venda/custo/dízimo/alimentação/transporte e lança tudo
 - PWA: instala no celular, abre offline e sincroniza quando volta

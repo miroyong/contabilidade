@@ -1,5 +1,5 @@
 // ============================================================
-// Cartão "Saídas líquidas por categoria" (app.js) com DOM/PostgREST mockados.
+// Cartão "Saídas líquidas por categoria" + KPIs (DOM/PostgREST mockados).
 // Uso: node scripts/test-grafico.js
 //
 // Valida a regra do líquido por categoria:
@@ -7,7 +7,8 @@
 //   • entradas da mesma categoria abatem as saídas (dízimo que só passou pelo
 //     caixa, entrou e foi repassado à sede, não conta como gasto cheio);
 //   • entradas maiores que as saídas zeram a barra (nunca valor negativo);
-//   • categoria só com entradas (ex.: Salário) fica fora do cartão.
+//   • categoria só com entradas (ex.: Salário) fica fora do cartão;
+//   • KPI "Maior saída" ignora depósito/transferência do caixa para o banco.
 // ============================================================
 'use strict';
 const fs = require('fs');
@@ -62,15 +63,19 @@ const curName = cap(agora.toLocaleDateString('pt-BR', { month: 'long' }));
 const mm = pad2(agora.getMonth() + 1);
 const d = (dia) => ano + '-' + mm + '-' + pad2(dia);
 
-// 9 categorias de saída + entradas que abatem 3 delas: os R$ 100 de dízimo
+// 11 categorias de saída + entradas que abatem 4 delas: os R$ 100 de dízimo
 // recebidos numa arrecadação individual e repassados à sede (R$ 500 de saída)
-// deixam a categoria em R$ 400, e o material ressarcido zera "Custos".
+// deixam a categoria em R$ 400, o material ressarcido zera "Custos" e o
+// depósito do caixa no banco (saída + entrada da mesma categoria) zera também.
 const ROWS = [
   // entradas: Salário não tem saída (fica fora do cartão)
   { num: 10, tipo: 'entrada', data: d(1), descricao: 'Salário', categoria: 'Salário', conta: 'Pix', valor: 5000 },
   { num: 11, tipo: 'entrada', data: d(2), descricao: 'Dízimo recebido (arrecadação individual)', categoria: 'Dízimo', conta: 'Pix', valor: 100 },
   { num: 12, tipo: 'entrada', data: d(3), descricao: 'Reembolso do plano', categoria: 'Saúde', conta: 'Pix', valor: 250 },
   { num: 13, tipo: 'entrada', data: d(4), descricao: 'Ressarcimento do material', categoria: 'Custos', conta: 'Dinheiro', valor: 400 },
+  { num: 14, tipo: 'entrada', data: d(14), descricao: 'Depósito recebido no banco', categoria: 'Depósito', conta: 'Pix', valor: 5000 },
+  { num: 15, tipo: 'entrada', data: d(15), descricao: 'Depósito recebido no banco', categoria: 'Depósito', conta: 'Pix', valor: 4400 },
+  { num: 16, tipo: 'entrada', data: d(16), descricao: 'Transferência recebida', categoria: 'Transferência', conta: 'Pix', valor: 4600 },
   // saídas
   { num: 20, tipo: 'saida', data: d(5), descricao: 'Aluguel', categoria: 'Moradia', conta: 'Pix', valor: 1200 },
   { num: 21, tipo: 'saida', data: d(6), descricao: 'Mercado', categoria: 'Alimentação', conta: 'Dinheiro', valor: 900 },
@@ -80,7 +85,11 @@ const ROWS = [
   { num: 25, tipo: 'saida', data: d(10), descricao: 'Escola', categoria: 'Educação', conta: 'Pix', valor: 220 },
   { num: 26, tipo: 'saida', data: d(11), descricao: 'Cinema', categoria: 'Lazer', conta: 'Dinheiro', valor: 120 },
   { num: 27, tipo: 'saida', data: d(12), descricao: 'Material do chaveiro', categoria: 'Custos', conta: 'Pix', valor: 300 },
-  { num: 28, tipo: 'saida', data: d(13), descricao: 'Dízimo enviado à sede', categoria: 'Dízimo', conta: 'Pix', valor: 500 }
+  { num: 28, tipo: 'saida', data: d(13), descricao: 'Dízimo enviado à sede', categoria: 'Dízimo', conta: 'Pix', valor: 500 },
+  // depósito do caixa no banco: transferência, não despesa
+  { num: 29, tipo: 'saida', data: d(14), descricao: 'Depósito em dinheiro', categoria: 'Depósito', conta: 'Dinheiro', valor: 5000 },
+  { num: 30, tipo: 'saida', data: d(16), descricao: 'Depósito', categoria: 'Transferência', conta: 'Pix', valor: 4600 },
+  { num: 31, tipo: 'saida', data: d(15), descricao: 'Guardado no banco', categoria: 'Depósito', conta: 'Dinheiro', valor: 4400 }
 ];
 
 // líquido por categoria (saídas − entradas), do maior para o menor
@@ -93,10 +102,12 @@ const ESPERADO = [
   { nome: 'Contas', valor: 'R$ 250,00' },
   { nome: 'Educação', valor: 'R$ 220,00' },
   { nome: 'Lazer', valor: 'R$ 120,00' },
-  { nome: 'Custos', valor: 'R$ 0,00' }        // entradas (400) maiores que a saída (300)
+  { nome: 'Custos', valor: 'R$ 0,00' },       // entradas (400) maiores que a saída (300)
+  { nome: 'Depósito', valor: 'R$ 0,00' },     // 9.400 de saída − 9.400 de entrada
+  { nome: 'Transferência', valor: 'R$ 0,00' } // 4.600 − 4.600
 ];
-const SOMA_LIQUIDA = 3840;   // 1200+900+400+400+350+250+220+120+0
-const TOTAL_SAIDAS = 4490;   // saídas brutas do mês
+const SOMA_LIQUIDA = 3840;   // 1200+900+400+400+350+250+220+120+0+0+0
+const TOTAL_SAIDAS = 18490;  // saídas brutas do mês (inclui os depósitos)
 
 // ---------- fetch mock (PostgREST) ----------
 function okJson(body, status = 200) {
@@ -169,10 +180,20 @@ setTimeout(() => {
   assert.ok(/Categoria top<\/span><span class="kpi-val">Moradia<\/span>[\s\S]*?R\$ 1\.200,00 · 31% do líquido/.test(kpis),
     'KPI usa o líquido e a base líquida (1200 de 3840 = 31%)');
 
-  // (7) o líquido é calculado uma vez só e o gráfico não corta categorias
+  // (7) "Maior saída" ignora depósito (transferência de caixa para o banco):
+  // sem isso o KPI mostraria "Depósito em dinheiro" R$ 5.000,00
+  assert.ok(/Maior saída<\/span><span class="kpi-val">Aluguel<\/span><span class="kpi-sub">R\$ 1\.200,00/.test(kpis),
+    'Maior saída é a maior despesa real (Aluguel), não o depósito');
+  ['Depósito em dinheiro', 'Depósito', 'Guardado no banco'].forEach((d) => {
+    assert.ok(!new RegExp('Maior saída[\\s\\S]{0,120}' + d).test(kpis), '"' + d + '" não é Maior saída');
+  });
+  assert.ok(appJs.includes('function ehDeposito') && appJs.includes('!ehDeposito(l)'),
+    'filtro de depósito aplicado em "Maior saída"');
+
+  // (8) o líquido é calculado uma vez só e o gráfico não corta categorias
   assert.ok(appJs.includes('function abaterEntradas'), 'líquido centralizado em abaterEntradas');
   assert.ok(!appJs.includes('.slice(0, 6)'), 'gráfico não corta mais nas 6 maiores categorias');
 
-  console.log('✔ TESTE DO GRÁFICO POR CATEGORIA PASSOU (líquido de entradas, sem corte)');
+  console.log('✔ TESTE DO GRÁFICO POR CATEGORIA PASSOU (líquido de entradas, sem corte, sem depósito como maior saída)');
   process.exit(0);
 }, 300);

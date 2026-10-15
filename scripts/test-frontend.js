@@ -217,8 +217,8 @@ setTimeout(() => {
   // (1) insights ignoram lançamentos com categoria "acumulado"
   assert.ok(appJs.includes("l.categoria.toLowerCase() !== 'acumulado'"),
     'insights filtra categoria "acumulado" (case-insensitive)');
-  assert.ok(/saidasInsight\.forEach/.test(appJs) && /var maior = saidasInsight\.slice/.test(appJs),
-    'porCat e Maior saída usam saidasInsight (ignoram acumulado)');
+  assert.ok(/saidasInsight\.forEach/.test(appJs) && /var maior = saidasInsight\.filter/.test(appJs),
+    'porCat e Maior saída usam saidasInsight (ignoram acumulado e "Depósito")');
   // (2) mecânica Pix (enviar/salvar/copiar) removida — sem geradores de BR code
   ['abrirPagBankApp', 'salvarConfigPix', 'abrirConfigPix', 'carregarConfigPix',
     'copiarClip', 'chavePixValida', 'pixCopiar', 'pixCRC16', 'pixEMV'].forEach((fn) => {
