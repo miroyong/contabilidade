@@ -576,15 +576,29 @@
     if (atualConta) selConta.value = atualConta;
   }
 
+  // Saídas menos entradas da mesma categoria: um dízimo que só passou pelo caixa
+  // (entrou para o grupo e foi repassado à sede nacional) fica zerado em vez de
+  // contar como gasto cheio. Categoria sem saída não entra: o cartão é do que saiu.
+  function abaterEntradas(porCat, entradas) {
+    (entradas || state.entradas).forEach(function (l) {
+      var c = l.categoria || 'Sem categoria';
+      if (porCat[c] == null) return;
+      porCat[c] = Math.max(0, Math.round((porCat[c] - l.valor) * 100) / 100);
+    });
+    return porCat;
+  }
+
   function renderGrafico() {
     var porCat = {};
     state.saidas.forEach(function (l) {
       var c = l.categoria || 'Sem categoria';
       porCat[c] = (porCat[c] || 0) + l.valor;
     });
+    abaterEntradas(porCat);
     var box = $('grafico');
+    // todas as categorias do mês (sem corte): nenhuma saída fica fora da conta
     var itens = Object.keys(porCat).map(function (c) { return { nome: c, valor: porCat[c] }; })
-      .sort(function (a, b) { return b.valor - a.valor; }).slice(0, 6);
+      .sort(function (a, b) { return b.valor - a.valor; });
     if (!itens.length) {
       box.innerHTML = '<div class="vazio">Sem saídas neste mês.</div>';
       return;
@@ -763,6 +777,11 @@
       var c = l.categoria || 'Sem categoria';
       porCat[c] = (porCat[c] || 0) + l.valor;
     });
+    // mesma conta do cartão por categoria: entradas da categoria abatem as saídas
+    abaterEntradas(porCat, state.entradas.filter(function (l) {
+      return !l.categoria || l.categoria.toLowerCase() !== 'acumulado';
+    }));
+    var totalLiquido = Object.keys(porCat).reduce(function (s, c) { return s + porCat[c]; }, 0);
     var topCat = null;
     Object.keys(porCat).forEach(function (c) {
       if (!topCat || porCat[c] > topCat.valor) topCat = { nome: c, valor: porCat[c] };
@@ -777,8 +796,8 @@
     }
 
     if (topCat && topCat.valor > 0) {
-      kpi('Categoria top', esc(topCat.nome), fmtBRL.format(topCat.valor) + ' · ' +
-        Math.round(topCat.valor / totS * 100) + '% das saídas');
+      kpi('Categoria top', esc(topCat.nome), fmtBRL.format(topCat.valor) +
+        (totalLiquido > 0 ? ' · ' + Math.round(topCat.valor / totalLiquido * 100) + '% do líquido' : ''));
     }
     if (maior && maior.valor > 0) {
       kpi('Maior saída', esc(maior.descricao), fmtBRL.format(maior.valor));

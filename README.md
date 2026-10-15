@@ -9,6 +9,8 @@ primeiro, com cache local e sincronização) e traz dashboard e relatórios.
   (o que sobra num mês continua no seguinte); o Dashboard segue mostrando os números do mês
 - Extrato com filtros (tipo, categoria, conta, busca)
 - Dashboard: barra de proporção entradas × saídas, KPIs do mês e comparativo com o anterior
+- Cartão "Saídas líquidas por categoria": lista **todas** as categorias do mês, descontando as
+  entradas da mesma categoria (um dízimo recebido e repassado à sede não conta como gasto)
 - Ações por lançamento (⋯): editar, marcar "pago/enviado" em despesas (Dízimo/Custos) e excluir
 - Aba Arrecadação (Chaveiros/Brownie): calcula venda/custo/dízimo/alimentação/transporte e lança tudo
 - PWA: instala no celular, abre offline e sincroniza quando volta
@@ -153,12 +155,13 @@ contabilidade/
 ├── scripts/
 │   ├── test-backend.js       # lógica pura do Code.gs (legado)
 │   ├── test-frontend.js      # smoke test com PostgREST mockado
+│   ├── test-grafico.js       # cartão por categoria: líquido de entradas, sem corte
 │   ├── test-persistencia.js  # cache não guarda lançamento não confirmado
 │   ├── test-cache.js         # 2ª abertura renderiza do cache sem servidor
 │   ├── test-migracao.js      # migração Supabase ➜ Sheets (APIs simuladas)
 │   └── deploy-apps-script.sh # [legado] redeploy do Apps Script
 ├── .github/workflows/
-│   └── ci.yml            # CI: roda os 5 testes a cada push
+│   └── ci.yml            # CI: roda os 6 testes a cada push
 └── README.md
 ```
 
@@ -169,11 +172,12 @@ Só Node, sem dependências:
 ```bash
 node scripts/test-backend.js
 node scripts/test-frontend.js
+node scripts/test-grafico.js
 node scripts/test-persistencia.js
 node scripts/test-cache.js
 node scripts/test-migracao.js
 ```
 
-O GitHub Actions (`.github/workflows/ci.yml`) roda os cinco em todo
+O GitHub Actions (`.github/workflows/ci.yml`) roda os seis em todo
 `push`/`pull request`.
 

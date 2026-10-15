@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon.svg">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=63">
+<link rel="stylesheet" href="style.css?v=64">
 </head>
 <body>
 
@@ -164,7 +164,7 @@
 
   <!-- Gráfico por categoria -->
   <section class="cartao grafico" id="grafico-section">
-    <h2>Saídas por categoria</h2>
+    <h2>Saídas líquidas por categoria</h2>
     <div id="grafico"></div>
   </section>
 
@@ -230,12 +230,12 @@
 
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="config.js?v=63"></script>
-<script src="app.js?v=63"></script>
+<script src="config.js?v=64"></script>
+<script src="app.js?v=64"></script>
 <script>
   // Registra o service worker (PWA) — falha silenciosa se não suportado/Https.
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js?v=63').catch(function () {});
+    navigator.serviceWorker.register('service-worker.js?v=64').catch(function () {});
   }
 </script>
 </body>
