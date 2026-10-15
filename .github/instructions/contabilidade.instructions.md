@@ -40,6 +40,19 @@ applyTo: "**"
 - Keep navigation network-first in the service worker so deployed changes are not trapped behind stale HTML; cache is the offline fallback.
 - Verify the live Pages HTML/assets after publishing when the user reports that changes did not appear.
 
+## Planilha (espelho Supabase ➜ Sheets)
+
+- Destino: `1WTL4V2AGx_jj84_rKU3Y18tGXgeN4dT9-ciYc0an_dA`
+  ("Contabilidade - TEO (BR,2026)"), template "120 Dias - Controle Financeiro Geral",
+  agenda do espelho em `apps-script/MigrarSupabase.gs`.
+- Layout do template (aba `Página1`): **linha 17 = cabeçalho, lançamentos a partir da linha 18**.
+  ENTRADAS `B:D` (Data, Valor Bruto, Custo) · SAÍDAS `J:N` (Data, Descrição, Categoria, Valor, Observação)
+  · extras das entradas em `O:P:Q`.
+- `E/F/G` (Lucro Bruto, Dízimo 10%, Valor Líquido) e `C3/F3/J3` (totais) são **fórmulas do
+  template**: a migração nunca escreve nelas. Os blocos "Controle da Estadia"/"Painel de
+  Progresso" (linhas 8-13) são manuais.
+- `Code.gs` (cabeçalho na linha 6, A:E e G:K) **não** lê essa planilha — o layout é outro de propósito.
+
 ## Data safety
 
 - Do not bypass CAPTCHA, anti-bot controls, or fiscal portals.

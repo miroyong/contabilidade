@@ -5,9 +5,9 @@
  * API que o site usa) para DESTA planilha:
  *   https://docs.google.com/spreadsheets/d/1WTL4V2AGx_jj84_rKU3Y18tGXgeN4dT9-ciYc0an_dA
  *
- * É um ESPELHO de leitura: o Supabase é a fonte da verdade. A cada execução o
- * bloco de lançamentos da aba é limpo e regravado, então edições feitas na
- * planilha são sobrescritas na próxima migração.
+ * É um ESPELHO de leitura: o Supabase é a fonte da verdade. A cada execução as
+ * tabelas ENTRADAS/SAÍDAS da aba são limpas e regravadas, então edições feitas
+ * nessas tabelas são sobrescritas na próxima migração.
  *
  * COMO INSTALAR (uma vez):
  *   1. Abra a planilha de destino e vá em Extensões → Apps Script.
@@ -20,21 +20,29 @@
  *      Também dá para rodar pelo editor: escolha `migrarDoSupabase` e clique ▶.
  *
  * MENU "Financeiro":
- *   • Migrar tudo do Supabase → cria/atualiza uma aba por mês
+ *   • Migrar tudo do Supabase → grava todas as tabelas na aba "Página1"
  *   • Migrar um mês…          → só um mês ("Agosto", "2026-08" ou "Agosto 2026")
  *   • Testar conexão          → confere URL/chave e lista os meses do banco
  *
- * LAYOUT GRAVADO (idêntico ao apps-script/Code.gs):
- *   • linha 6 = cabeçalho · lançamentos a partir da linha 7
- *   • A:E = ENTRADAS (Data, Descrição, Categoria, Conta, Valor)
- *   • G:K = SAÍDAS   (mesma ordem) · coluna F = separador
- *   • C4 = total de entradas, I4 = total de saídas, C1 = balanço (fórmulas)
- *   • Nome da aba: "Agosto" (o id usado no banco); se o mesmo mês existir em
- *     mais de um ano, vira "Agosto 2025"/"Agosto 2026" para não misturar.
+ * LAYOUT GRAVADO — template "120 Dias - Controle Financeiro Geral", numa única
+ * aba (`MIG_ABA_MODELO` = "Página1"), a partir da LINHA 18 (a 17 é o cabeçalho):
+ *   • ENTRADAS: B = Data · C = Valor Bruto · D = Custo (não vem do banco)
+ *   • SAÍDAS:   J = Data · K = Descrição · L = Categoria · M = Valor
+ *               N = Observação (recebe a Conta: Pix / Dinheiro / Físico)
+ *   • E (Lucro Bruto), F (Dízimo 10%) e G (Valor Líquido) são FÓRMULAS do
+ *     template e a migração nunca escreve nelas. Os totais da linha 3
+ *     (C3 = SOMA(G18:G), F3 = SOMA(M18:M), J3 = C3-F3) também são fórmulas e
+ *     somam a coluna inteira — como tudo vai para a mesma aba, eles mostram o
+ *     total geral (todos os meses), sem precisar de ajuste quando as linhas
+ *     crescem.
+ *   • O bloco CONTROLE DA ESTADIA / PAINEL DE PROGRESSO (linhas 8-13) é
+ *     manual e nunca é tocado.
+ *   • O template não tem colunas para Descrição/Categoria/Conta das
+ *     ENTRADAS; para não perder dado, elas são gravadas à direita, em
+ *     O:P:Q (MIG_EXTRAS). Basta apagar/ocultar essas colunas se não quiser.
+ *   • Com MIG_ABA_POR_MES = true o nome da aba passa a ser o mês ("Agosto",
+ *     ou "Agosto 2026" se o mesmo mês existir em mais de um ano).
  *   A marca "✓" de pago/enviado vem junto da própria Descrição.
- *   Fórmulas e formatos são esticados quando o mês passa de 93 linhas (o
- *   range original do Code.gs ia só até a linha 100), então o total nunca
- *   fica "cortado".
  *
  * PLANILHA DE DESTINO: definida em MIG_SPREADSHEET_ID. Para trocar sem mexer
  * no código, salve uma Propriedade do script (Configurações do projeto →
@@ -51,12 +59,25 @@
  ******************************************************************************/
 
 // ------------------------------------------------------------- configuração
-// Linha em que começa a lista de lançamentos (linha 6 = cabeçalho).
-// Reaproveita a constante do Code.gs quando ele estiver no mesmo projeto.
-var MIG_LINHA_DADOS = (typeof LINHA_DADOS !== 'undefined' && LINHA_DADOS) ? LINHA_DADOS : 7;
-
 // Planilha de destino da migração (NÃO herda a planilha do Code.gs).
 var MIG_SPREADSHEET_ID = '1WTL4V2AGx_jj84_rKU3Y18tGXgeN4dT9-ciYc0an_dA';
+
+// ---------------------------------------------------- layout do template TEO
+// A migração grava SEMPRE na aba `MIG_ABA_MODELO` ("Página1"), nas tabelas
+// ENTRADAS/SAÍDAS, a partir da LINHA 18 (a 17 é o cabeçalho).
+var MIG_ABA_MODELO = 'Página1';  // aba de destino (o template TEO)
+var MIG_ABA_POR_MES = false;     // false = tudo em Página1 (padrão)
+                                 // true  = uma aba por mês, copiada de Página1
+var MIG_LINHA_DADOS = 18;        // 1ª linha de lançamento (17 = cabeçalho)
+
+// Colunas do template (1 = A). As faixas escritas são B:D, J:N e O:Q.
+var MIG_COL_ENTRADA = 2;   // B: Data, Valor Bruto, Custo
+var MIG_COL_SAIDA = 10;    // J: Data, Descrição, Categoria, Valor, Observação
+var MIG_COL_EXTRA = 15;    // O: Descrição, Categoria, Conta (só ENTRADAS)
+var MIG_EXTRAS = true;     // false = não grava as colunas extras O:P:Q
+
+var MIG_FMT_DATA = 'dd/mm';
+var MIG_FMT_MOEDA = 'R$ #,##0.00';
 
 // Chave do app (a mesma do Code.gs/config.js), para o arquivo ficar
 // autossuficiente. Quem valida a chave no modo URL
@@ -73,7 +94,6 @@ var MIG_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdX
 //   'id'   → o id do banco, como está ("Agosto", "2026-08", …)
 var MIG_FORMATO_ABA = 'auto';
 
-var MIG_FIM_FORMATOS = 100;   // formatos/fórmulas pré-aplicados até esta linha
 var MIG_TAM_PAGINA = 1000;    // registros por página na leitura do Supabase
 var MIG_MAX_REGISTROS = 20000;// trava de segurança
 var MIG_MAX_TEXTO = 120;      // mesmo limite das colunas no Postgres
@@ -159,30 +179,73 @@ function migrarDoSupabase(mesFiltro) {
     ids = escolha.ids;
   }
 
-  var anos = migMapaAnos(ids);
   var meses = [], erros = [];
-  var donoDaAba = {}; // nome da aba → id que a usa (evita uma sobrescrever a outra)
 
-  ids.forEach(function (id) {
-    try {
-      var nome = migNomeAba(id, anos);
-      if (donoDaAba[nome] && donoDaAba[nome] !== id) {
-        throw new Error('a aba "' + nome + '" seria usada também por "' + donoDaAba[nome] +
-          '" — ajuste MIG_FORMATO_ABA para "id" ou padronize os ids no banco.');
+  if (!MIG_ABA_POR_MES) {
+    // Padrão: tudo na mesma aba ("Página1"). As duas tabelas ficam em ordem de
+    // data, então dá para isolar um mês pela coluna Data.
+    var todasE = [], todasS = [];
+    ids.forEach(function (id) {
+      try {
+        var linhas = migBuscarLancamentos(cfg, id);
+        var e = migFiltrar(linhas, 'entrada'), s = migFiltrar(linhas, 'saida');
+        todasE = todasE.concat(e);
+        todasS = todasS.concat(s);
+        meses.push({
+          mes: id, aba: MIG_ABA_MODELO, entradas: e.length, saidas: s.length,
+          totalEntradas: migSoma(e), totalSaidas: migSoma(s), balanco: migSoma(e) - migSoma(s)
+        });
+      } catch (err) {
+        erros.push(id + ': ' + migErro(err));
       }
-      var rows = migBuscarLancamentos(cfg, id);
-      var sh = migGarantirAba(ss, nome);
-      donoDaAba[nome] = id;
-      var r = migEscreverAba(sh, migFiltrar(rows, 'entrada'), migFiltrar(rows, 'saida'));
-      meses.push({
-        mes: id, aba: nome, entradas: r.entradas, saidas: r.saidas,
-        totalEntradas: r.totalEntradas, totalSaidas: r.totalSaidas,
-        balanco: r.totalEntradas - r.totalSaidas
+    });
+    if (meses.length) {
+      var alvo = ss.getSheetByName(MIG_ABA_MODELO);
+      if (!alvo) {
+        throw new Error('aba "' + MIG_ABA_MODELO + '" não encontrada — ajuste MIG_ABA_MODELO.');
+      }
+      if (!migPareceTemplate(alvo)) {
+        throw new Error('a aba "' + MIG_ABA_MODELO + '" não tem as tabelas do template ' +
+          '(cabeçalho "Data" em B' + (MIG_LINHA_DADOS - 1) + ' e J' + (MIG_LINHA_DADOS - 1) + ').');
+      }
+      var rUnica = migEscreverAba(alvo, migOrdenar(todasE), migOrdenar(todasS));
+      meses.forEach(function (m) {
+        m.linhaInicial = rUnica.primeiraLinha;
+        m.linhaFinal = rUnica.ultimaLinha;
       });
-    } catch (err) {
-      erros.push(id + ': ' + migErro(err));
     }
-  });
+  } else {
+    var anos = migMapaAnos(ids);
+    var donoDaAba = {}; // nome da aba → id que a usa (evita uma sobrescrever a outra)
+
+    ids.forEach(function (id) {
+      try {
+        var nome = migNomeAba(id, anos);
+        if (donoDaAba[nome] && donoDaAba[nome] !== id) {
+          throw new Error('a aba "' + nome + '" seria usada também por "' + donoDaAba[nome] +
+            '" — ajuste MIG_FORMATO_ABA para "id" ou padronize os ids no banco.');
+        }
+        var rows = migBuscarLancamentos(cfg, id);
+        var dest = migAbaDoMes(ss, nome);
+        if (!dest.criada && !migPareceTemplate(dest.aba)) {
+          throw new Error('a aba "' + nome + '" já existe mas não tem as tabelas do template ' +
+            '(cabeçalho "Data" em B' + (MIG_LINHA_DADOS - 1) + ' e J' + (MIG_LINHA_DADOS - 1) + '). ' +
+            'Renomeie ou apague essa aba para a migração poder copiar o modelo.');
+        }
+        donoDaAba[nome] = id;
+        var r = migEscreverAba(dest.aba, migFiltrar(rows, 'entrada'), migFiltrar(rows, 'saida'));
+        meses.push({
+          mes: id, aba: nome, criada: dest.criada,
+          entradas: r.entradas, saidas: r.saidas,
+          totalEntradas: r.totalEntradas, totalSaidas: r.totalSaidas,
+          linhaInicial: r.primeiraLinha, linhaFinal: r.ultimaLinha,
+          balanco: r.totalEntradas - r.totalSaidas
+        });
+      } catch (err) {
+        erros.push(id + ': ' + migErro(err));
+      }
+    });
+  }
 
   var resumo = { ok: erros.length === 0, planilha: migNomePlanilha(ss), meses: meses, erros: erros };
   Logger.log(migResumoTexto(resumo));
@@ -310,98 +373,112 @@ function migResumoErro(texto) {
 }
 
 // ------------------------------------------------------------ escrita na aba
-function migGarantirAba(ss, nome) {
-  var sh = ss.getSheetByName(nome);
-  return sh ? sh : migCriarAba(ss, nome);
-}
-
-/** Cria a aba do mês com o mesmo layout/formatação do Code.gs. */
-function migCriarAba(ss, nome) {
-  var sh = ss.insertSheet(nome);
-
-  sh.getRange('A1').setValue('BALANÇO');
-  sh.getRange('B1').setValue('POSITIVO');
-  sh.getRange('C1').setFormula('=SUM(C4-I4)');
-  sh.getRange('A4').setValue('TOTAL DE ENTRADAS');
-  sh.getRange('C4').setFormula('=SUM(E7:E' + MIG_FIM_FORMATOS + ')');
-  sh.getRange('G4').setValue('TOTAL DE SAÍDAS');
-  sh.getRange('I4').setFormula('=SUM(K7:K' + MIG_FIM_FORMATOS + ')');
-  sh.getRange('A5').setValue('ENTRADAS');
-  sh.getRange('G5').setValue('SAÍDAS');
-  sh.getRange('A5:E5').merge();
-  sh.getRange('G5:K5').merge();
-
-  var cabecalho = [['Data', 'Descrição', 'Categoria', 'Conta', 'Valor']];
-  sh.getRange('A6:E6').setValues(cabecalho);
-  sh.getRange('G6:K6').setValues(cabecalho);
-
-  sh.getRange('A1:C1').setFontWeight('bold');
-  sh.getRange('A4:C4').setFontWeight('bold');
-  sh.getRange('G4:I4').setFontWeight('bold');
-  sh.getRange('A5:E5').setFontWeight('bold').setBackground('#e3f2e6');
-  sh.getRange('G5:K5').setFontWeight('bold').setBackground('#fdeaea');
-  sh.getRange('A6:K6').setFontWeight('bold').setBackground('#f2f2f2');
-
-  sh.getRange('A7:A' + MIG_FIM_FORMATOS).setNumberFormat('dd/mm');
-  sh.getRange('G7:G' + MIG_FIM_FORMATOS).setNumberFormat('dd/mm');
-  sh.getRange('E7:E' + MIG_FIM_FORMATOS).setNumberFormat('#,##0.00');
-  sh.getRange('K7:K' + MIG_FIM_FORMATOS).setNumberFormat('#,##0.00');
-
-  sh.setColumnWidths(1, 5, 120);
-  sh.setColumnWidth(6, 20);
-  sh.setColumnWidths(7, 5, 120);
-  return sh;
+/** Devolve a aba do mês, criando-a como CÓPIA da aba modelo quando faltar. */
+function migAbaDoMes(ss, nome) {
+  var existente = ss.getSheetByName(nome);
+  if (existente) return { aba: existente, criada: false };
+  var modelo = ss.getSheetByName(MIG_ABA_MODELO);
+  if (!modelo) {
+    throw new Error('aba modelo "' + MIG_ABA_MODELO + '" não encontrada — ajuste MIG_ABA_MODELO.');
+  }
+  var copia = modelo.copyTo(ss);
+  copia.setName(nome);
+  return { aba: copia, criada: true };
 }
 
 /**
- * Regrava a aba: limpa A:E e G:K (linha 7 em diante), escreve as entradas e as
- * saídas e reajusta formatos/fórmulas até a última linha usada.
+ * A aba tem as tabelas do template? (cabeçalho "Data" em B e J na linha 17)
+ * Serve para não sobrescrever uma aba que não seja do template.
+ */
+function migPareceTemplate(sh) {
+  try {
+    var cab = MIG_LINHA_DADOS - 1;
+    return migTexto(sh.getRange(cab, MIG_COL_ENTRADA).getValue(), 20).toLowerCase() === 'data' &&
+           migTexto(sh.getRange(cab, MIG_COL_SAIDA).getValue(), 20).toLowerCase() === 'data';
+  } catch (err) {
+    return false;
+  }
+}
+
+/**
+ * Regrava as tabelas da aba (linha 18 em diante): limpa B:D, J:N e O:Q, escreve
+ * os lançamentos do mês e reaplica os formatos.
+ * As colunas de fórmula do template (E, F e G) e a linha 3 não são tocadas.
  */
 function migEscreverAba(sh, entradas, saidas) {
   migLimparDados(sh);
 
-  var matE = migMatriz(entradas);
-  var matS = migMatriz(saidas);
-  if (matE.length) sh.getRange(MIG_LINHA_DADOS, 1, matE.length, 5).setValues(matE);
-  if (matS.length) sh.getRange(MIG_LINHA_DADOS, 7, matS.length, 5).setValues(matS);
+  var matE = migMatrizEntradas(entradas);
+  var matS = migMatrizSaidas(saidas);
+  if (matE.length) sh.getRange(MIG_LINHA_DADOS, MIG_COL_ENTRADA, matE.length, 3).setValues(matE);
+  if (matS.length) sh.getRange(MIG_LINHA_DADOS, MIG_COL_SAIDA, matS.length, 5).setValues(matS);
+  if (MIG_EXTRAS && matE.length) {
+    sh.getRange(MIG_LINHA_DADOS, MIG_COL_EXTRA, matE.length, 3).setValues(migMatrizExtras(entradas));
+  }
 
-  var usadas = Math.max(matE.length, matS.length, 1);
-  var fim = Math.max(MIG_LINHA_DADOS + usadas - 1, MIG_FIM_FORMATOS);
-
-  sh.getRange('A' + MIG_LINHA_DADOS + ':A' + fim).setNumberFormat('dd/mm');
-  sh.getRange('G' + MIG_LINHA_DADOS + ':G' + fim).setNumberFormat('dd/mm');
-  sh.getRange('E' + MIG_LINHA_DADOS + ':E' + fim).setNumberFormat('#,##0.00');
-  sh.getRange('K' + MIG_LINHA_DADOS + ':K' + fim).setNumberFormat('#,##0.00');
-
-  sh.getRange('C4').setFormula('=SUM(E' + MIG_LINHA_DADOS + ':E' + fim + ')');
-  sh.getRange('I4').setFormula('=SUM(K' + MIG_LINHA_DADOS + ':K' + fim + ')');
-  sh.getRange('C1').setFormula('=SUM(C4-I4)');
+  var usadas = Math.max(matE.length, matS.length);
+  if (usadas) {
+    sh.getRange(MIG_LINHA_DADOS, MIG_COL_ENTRADA, usadas, 1).setNumberFormat(MIG_FMT_DATA);
+    sh.getRange(MIG_LINHA_DADOS, MIG_COL_ENTRADA + 1, usadas, 2).setNumberFormat(MIG_FMT_MOEDA);
+    sh.getRange(MIG_LINHA_DADOS, MIG_COL_SAIDA, usadas, 1).setNumberFormat(MIG_FMT_DATA);
+    sh.getRange(MIG_LINHA_DADOS, MIG_COL_SAIDA + 3, usadas, 1).setNumberFormat(MIG_FMT_MOEDA);
+  }
 
   return {
     entradas: matE.length, saidas: matS.length,
-    totalEntradas: migSoma(entradas), totalSaidas: migSoma(saidas), ultimaLinha: fim
+    totalEntradas: migSoma(entradas), totalSaidas: migSoma(saidas),
+    primeiraLinha: MIG_LINHA_DADOS,
+    ultimaLinha: MIG_LINHA_DADOS + Math.max(usadas - 1, 0)
   };
 }
 
 function migLimparDados(sh) {
   var ultima = Math.max(sh.getLastRow(), MIG_LINHA_DADOS);
   var n = ultima - MIG_LINHA_DADOS + 1;
-  sh.getRange(MIG_LINHA_DADOS, 1, n, 5).clearContent(); // A:E
-  sh.getRange(MIG_LINHA_DADOS, 7, n, 5).clearContent(); // G:K
+  sh.getRange(MIG_LINHA_DADOS, MIG_COL_ENTRADA, n, 3).clearContent(); // B:D
+  sh.getRange(MIG_LINHA_DADOS, MIG_COL_SAIDA, n, 5).clearContent();   // J:N
+  if (MIG_EXTRAS) {
+    sh.getRange(MIG_LINHA_DADOS, MIG_COL_EXTRA, n, 3).clearContent(); // O:Q
+  }
 }
 
-/** Linhas do banco → matriz de 5 colunas prontas para setValues. */
-function migMatriz(rows) {
+/** ENTRADAS → [Data, Valor Bruto, Custo] (o banco não tem Custo em entrada). */
+function migMatrizEntradas(rows) {
   var out = [];
   (rows || []).forEach(function (r) {
     var data = migData(r && r.data);
     if (!data) return; // sem data válida não dá para lançar
+    out.push([data, migValor(r.valor), '']);
+  });
+  return out;
+}
+
+/** Campos que a ENTRADA tem no banco e o template não tem (colunas O:P:Q). */
+function migMatrizExtras(rows) {
+  var out = [];
+  (rows || []).forEach(function (r) {
+    if (!migData(r && r.data)) return;
+    out.push([
+      migTexto(r.descricao, MIG_MAX_TEXTO),
+      migTexto(r.categoria, MIG_MAX_TEXTO),
+      migTexto(r.conta, MIG_MAX_TEXTO)
+    ]);
+  });
+  return out;
+}
+
+/** SAÍDAS → [Data, Descrição, Categoria, Valor, Observação(=conta)]. */
+function migMatrizSaidas(rows) {
+  var out = [];
+  (rows || []).forEach(function (r) {
+    var data = migData(r && r.data);
+    if (!data) return;
     out.push([
       data,
       migTexto(r.descricao, MIG_MAX_TEXTO),
       migTexto(r.categoria, MIG_MAX_TEXTO),
-      migTexto(r.conta, MIG_MAX_TEXTO),
-      migValor(r.valor)
+      migValor(r.valor),
+      migTexto(r.conta, MIG_MAX_TEXTO)
     ]);
   });
   return out;
@@ -409,19 +486,26 @@ function migMatriz(rows) {
 
 // ---------------------------------------------------------------- utilitários
 function migFiltrar(rows, tipo) {
-  return (rows || []).filter(function (r) { return r && r.tipo === tipo; })
-    .sort(function (a, b) {
-      var da = String(a.data == null ? '' : a.data);
-      var db = String(b.data == null ? '' : b.data);
-      if (da !== db) return da < db ? -1 : 1;
-      var na = Number(a.num), nb = Number(b.num); // num = "linha" estável do banco
-      if (isFinite(na) && isFinite(nb) && na !== nb) return na - nb;
-      var sa = String(a.descricao == null ? '' : a.descricao);
-      var sb = String(b.descricao == null ? '' : b.descricao);
-      if (sa !== sb) return sa < sb ? -1 : 1;
-      var va = Number(a.valor) || 0, vb = Number(b.valor) || 0;
-      return va === vb ? 0 : (va < vb ? -1 : 1);
-    });
+  return (rows || []).filter(function (r) { return r && r.tipo === tipo; }).sort(migComparar);
+}
+
+/** Ordena lançamentos por data (mesma regra do filtro). */
+function migOrdenar(rows) {
+  return (rows || []).slice().sort(migComparar);
+}
+
+/** Comparador: data → num (linha estável do banco) → descrição → valor. */
+function migComparar(a, b) {
+  var da = String(a.data == null ? '' : a.data);
+  var db = String(b.data == null ? '' : b.data);
+  if (da !== db) return da < db ? -1 : 1;
+  var na = Number(a.num), nb = Number(b.num);
+  if (isFinite(na) && isFinite(nb) && na !== nb) return na - nb;
+  var sa = String(a.descricao == null ? '' : a.descricao);
+  var sb = String(b.descricao == null ? '' : b.descricao);
+  if (sa !== sb) return sa < sb ? -1 : 1;
+  var va = Number(a.valor) || 0, vb = Number(b.valor) || 0;
+  return va === vb ? 0 : (va < vb ? -1 : 1);
 }
 
 function migSoma(rows) {
@@ -586,11 +670,16 @@ function migResumoTexto(r) {
   var linhas = ['Migração Supabase ➜ ' + (r.planilha || MIG_SPREADSHEET_ID), ''];
   if (r.meses && r.meses.length) {
     r.meses.forEach(function (m) {
-      linhas.push('• ' + m.aba + ' (' + m.mes + '): ' + m.entradas + ' entradas, ' +
-        m.saidas + ' saídas → saldo ' + migBRL(m.balanco));
+      var onde = 'linhas ' + m.linhaInicial + '–' + m.linhaFinal;
+      linhas.push('• ' + m.aba + (m.criada ? ' (nova)' : '') + ' (' + m.mes + '): ' +
+        m.entradas + ' entradas, ' + m.saidas + ' saídas → saldo ' + migBRL(m.balanco) +
+        '  [' + onde + ']');
     });
     linhas.push('');
-    linhas.push('Total: ' + r.meses.length + ' aba(s) atualizada(s).');
+    linhas.push('Total: ' + r.meses.length + ' mês(es) gravado(s).');
+    linhas.push(MIG_ABA_POR_MES
+      ? 'Cada mês fica em uma aba copiada de "' + MIG_ABA_MODELO + '".'
+      : 'Tudo na aba "' + MIG_ABA_MODELO + '", em ordem de data (linhas 18+).');
   } else {
     linhas.push('Nenhum mês encontrado no Supabase.');
   }

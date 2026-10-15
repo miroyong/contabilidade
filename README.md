@@ -98,34 +98,41 @@ execução).
 
 **Uso**
 
-- **Financeiro → ⬇️ Migrar tudo do Supabase**: cria/atualiza uma aba por mês.
+- **Financeiro → ⬇️ Migrar tudo do Supabase**: grava todos os meses nas tabelas da aba `Página1`.
 - **Financeiro → 📅 Migrar um mês…**: aceita `Agosto`, `2026-08` ou `Agosto 2026`.
 - **Financeiro → 🔌 Testar conexão**: confere URL/chave e lista os meses do banco.
 - Pelo editor: selecione `migrarDoSupabase` e clique ▶ Executar.
 - Via URL (com o `Code.gs` no mesmo projeto):
   `/exec?key=cf-2026-k3x9pQ7mZt&action=migrar` (ou `&mes=Agosto`).
 
-**Como os dados ficam na planilha** (mesmo layout do `Code.gs`):
+**Como os dados ficam na planilha** — template "120 Dias - Controle Financeiro
+Geral", tudo na aba `Página1`, a partir da **linha 18** (a 17 é o cabeçalho):
 
 ```
-linha 6  = cabeçalho · lançamentos a partir da linha 7
-A:E      = ENTRADAS (Data, Descrição, Categoria, Conta, Valor)
-G:K      = SAÍDAS   (mesma ordem) · F = coluna separadora
-C4 / I4  = totais · C1 = balanço (fórmulas recalculadas)
+ENTRADAS  B Data · C Valor Bruto · D Custo (fica em branco)
+SAÍDAS    J Data · K Descrição · L Categoria · M Valor · N Observação (= conta)
+E / F / G = Lucro Bruto, Dízimo (10%) e Valor Líquido  → FÓRMULAS do template
+C3 / F3 / J3 = totais de entradas, de saídas e saldo   → FÓRMULAS do template
 ```
 
-- Nome da aba = `meses.id` do banco (`Agosto`); se o mesmo mês existir em 2+
-  anos, vira `Agosto 2025` / `Agosto 2026` (ajustável em `MIG_FORMATO_ABA`).
-- A marca `✓` de pago/enviado vem dentro da própria Descrição.
-- Ordem: data e, no empate, `num` (a "linha" estável do banco).
-- As fórmulas `=SUM(E7:E…)`/`=SUM(K7:K…)` são **esticadas** quando o mês passa de
-  93 lançamentos (o range do `Code.gs` ia só até a linha 100).
-- **Idempotente**: o bloco de lançamentos da aba é limpo e regravado — pode rodar
+- O template não tem Descrição/Categoria/Conta nas ENTRADAS; para não perder
+  dado, elas são gravadas à direita, em `O:P:Q` (`MIG_EXTRAS` — apague ou oculte
+  essas colunas se não quiser).
+- `E`, `F` e `G` nunca são escritas: quem calcula lucro, dízimo e valor líquido é
+  o próprio template. Os blocos **CONTROLE DA ESTADIA** e **PAINEL DE PROGRESSO**
+  (linhas 8-13) também não são tocados.
+- Ordem: data e, no empate, `num` (a "linha" estável do banco). Como tudo fica na
+  mesma aba, isole um mês filtrando a coluna Data.
+- **Idempotente**: as tabelas (linha 18 em diante) são limpas e regravadas — rode
   quantas vezes quiser, sem duplicar nem deixar linhas órfãs. A leitura é paginada
   (1000 registros por requisição) e um mês com problema não impede os outros.
+- Se a aba de destino não tiver o cabeçalho do template (`Data` em B17 e J17), a
+  migração para com erro em vez de escrever no lugar errado.
+- `MIG_ABA_POR_MES = true` muda o comportamento: cria **uma aba por mês**, copiada
+  de `Página1`, e grava cada mês na sua aba.
 - Para trocar o destino sem editar o código, salve a propriedade do script
   `SPREADSHEET_ID` (Configurações do projeto → Propriedades do script).
-- ⚠️ Como a planilha é regravada, **edite pelo app**, não direto na planilha.
+- ⚠️ Como as tabelas são regravadas, **edite pelo app**, não direto na planilha.
 
 ## Estrutura do projeto
 
